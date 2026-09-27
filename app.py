@@ -625,6 +625,25 @@ for p in parrafos:
 st.markdown('<p class="cita-destacada">Hoy honramos al hombre que abrió el camino, al esposo compañero, al padre presente, al abuelo generoso y al bisabuelo sabio. Tu historia de superación y tu legado viven en cada uno de nosotros.</p>', unsafe_allow_html=True)
 st.markdown('<p class="cita-destacada" style="margin-top:24px;">Gracias por tu fuerza, por tu generosidad sin límites y por enseñarnos a luchar siempre por lo nuestro.</p>', unsafe_allow_html=True)
 
+# Mensajes de la familia guardados en Supabase (junto a las citas fijas, antes del formulario)
+mensajes_guardados = cargar_dedicatorias()
+for row in mensajes_guardados:
+    texto_mostrado = row.get("mensaje") or ""
+    if row.get("nombre"):
+        texto_mostrado += f" — {row['nombre']}"
+    st.markdown(
+        f'''
+        <div class="tarjeta-con-borrar" style="margin-top:16px;">
+            <p class="cita-destacada" style="margin:0;">{texto_mostrado}</p>
+            <a class="btn-eliminar" href="?del_ded={row['id']}" title="Quitar esta dedicatoria">✕</a>
+        </div>
+        ''',
+        unsafe_allow_html=True,
+    )
+
+if mensajes_guardados:
+    st.markdown('<p class="firma-familia">Con amor eterno, tu familia</p>', unsafe_allow_html=True)
+
 # --------------------------------------------------------------------------
 # DEDICA UNAS PALABRAS (Persistente con Supabase, con opción de eliminar)
 # --------------------------------------------------------------------------
@@ -642,23 +661,6 @@ with st.form("agregar_dedicatoria", clear_on_submit=True):
         lluvia_corazones()
         st.rerun()
 
-# Cargar mensajes guardados en la base de datos
-mensajes_guardados = cargar_dedicatorias()
-for row in mensajes_guardados:
-    texto_mostrado = row.get("mensaje") or ""
-    if row.get("nombre"):
-        texto_mostrado += f" — {row['nombre']}"
-    st.markdown(
-        f'''
-        <div class="tarjeta-con-borrar" style="margin-top:16px;">
-            <p class="cita-destacada" style="margin:0;">{texto_mostrado}</p>
-            <a class="btn-eliminar" href="?del_ded={row['id']}" title="Quitar esta dedicatoria">✕</a>
-        </div>
-        ''',
-        unsafe_allow_html=True,
-    )
-
-st.markdown('<p class="firma-familia">Con amor eterno, tu familia</p>', unsafe_allow_html=True)
 st.markdown("<br>", unsafe_allow_html=True)
 
 # --------------------------------------------------------------------------
