@@ -51,11 +51,21 @@ st.markdown(
         --navy-primary: #111d33;
         --gold-accent: #d4af37;
     }
+
+    /* Ocultamos el header/menú/footer nativos de Streamlit: los reemplazamos
+       por nuestra propia barra superior, y evitamos que tapen nuestros
+       elementos fijos (tenían un z-index más alto que el nuestro). */
+    header[data-testid="stHeader"],
+    #MainMenu,
+    footer {
+        display: none !important;
+    }
+
     .stApp {
-        background-color: var(--bg-crema);
+        background-color: var(--bg-crema) !important;
         background-image:
             radial-gradient(rgba(212, 175, 55, 0.12) 1px, transparent 0),
-            radial-gradient(rgba(17, 29, 51, 0.05) 1px, #faf6f0 1px);
+            radial-gradient(rgba(17, 29, 51, 0.05) 1px, #faf6f0 1px) !important;
         background-size: 30px 30px;
         background-position: 0 0, 15px 15px;
     }
@@ -64,12 +74,12 @@ st.markdown(
     .barra-superior {
         position: fixed;
         top: 0; left: 0; right: 0;
-        z-index: 999;
+        z-index: 999999;
         display: flex;
         justify-content: space-between;
         align-items: center;
         padding: 10px 24px;
-        background: rgba(250, 246, 240, 0.92);
+        background: rgba(250, 246, 240, 0.95);
         backdrop-filter: blur(6px);
         border-bottom: 1px solid rgba(212, 175, 55, 0.25);
     }
@@ -77,20 +87,20 @@ st.markdown(
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        background: #fff;
+        background: #fff !important;
         border: 1px solid rgba(212, 175, 55, 0.5);
         border-radius: 999px;
         padding: 8px 16px;
         font-family: 'Cormorant Garamond', serif;
         font-weight: 600;
         font-size: .95rem;
-        color: #333;
+        color: #333 !important;
         cursor: pointer;
         text-decoration: none;
     }
     .pastilla-boton.imprimir {
-        background: #c1770f;
-        color: #fff;
+        background: #c1770f !important;
+        color: #fff !important;
         border: none;
     }
 
@@ -143,7 +153,7 @@ st.markdown(
     .lista-recuerdos {
         font-family: 'Cormorant Garamond', serif;
         font-size: 1rem;
-        color: #6b6b6b;
+        color: #6b6b6b !important;
         text-align: center;
         line-height: 1.9;
     }
@@ -152,7 +162,7 @@ st.markdown(
     .lluvia-corazones {
         position: fixed;
         inset: 0;
-        z-index: 1000;
+        z-index: 1000000;
         overflow: hidden;
         pointer-events: none;
     }
@@ -170,10 +180,27 @@ st.markdown(
         100% { transform: translateY(-110vh) scale(1.05); opacity: 0; }
     }
 
+    /* -------- Marco dorado de la foto principal -------- */
+    .marco-foto {
+        display: inline-block;
+        border-radius: 16px;
+        border: 8px solid;
+        border-image: linear-gradient(145deg, #f7e6b5, #b8860b, #e6ca65, #8a6508) 1;
+        box-shadow: 0 20px 40px -10px rgba(17,29,51,0.35), 0 0 25px rgba(212,175,55,0.4);
+        overflow: hidden;
+        line-height: 0;
+    }
+    .marco-foto img {
+        display: block;
+        width: 340px;
+        max-width: 100%;
+        border-radius: 8px;
+    }
+
     .titulo-dedicatoria {
         font-family: 'Cinzel', serif;
         text-align: center;
-        color: #111d33;
+        color: #111d33 !important;
         font-weight: 800;
         letter-spacing: .5px;
         font-size: 2rem;
@@ -183,8 +210,8 @@ st.markdown(
         display: inline-block;
         margin: 0 auto 10px auto;
         padding: 4px 18px;
-        background: rgba(212, 175, 55, 0.18);
-        color: #7a5c10;
+        background: rgba(212, 175, 55, 0.18) !important;
+        color: #7a5c10 !important;
         border-radius: 999px;
         font-size: .75rem;
         font-weight: 700;
@@ -197,15 +224,15 @@ st.markdown(
         font-size: 1.35rem;
         line-height: 1.8;
         text-align: justify;
-        color: #2b231d;
+        color: #2b231d !important;
     }
     .cita-destacada {
         font-family: 'Cormorant Garamond', serif;
         font-weight: 600;
         font-size: 1.5rem;
         text-align: center;
-        color: #7a5c10;
-        background: rgba(255, 245, 220, 0.6);
+        color: #7a5c10 !important;
+        background: rgba(255, 245, 220, 0.6) !important;
         padding: 18px;
         border-left: 4px solid #d4af37;
         border-radius: 10px;
@@ -215,14 +242,8 @@ st.markdown(
         font-size: .85rem;
         letter-spacing: 3px;
         text-transform: uppercase;
-        color: #6b6b6b;
+        color: #6b6b6b !important;
         margin-top: 6px;
-    }
-    .marco-foto img {
-        border-radius: 16px;
-        border: 8px solid;
-        border-image: linear-gradient(145deg, #f7e6b5, #b8860b, #e6ca65, #8a6508) 1;
-        box-shadow: 0 20px 40px -10px rgba(17,29,51,0.35), 0 0 25px rgba(212,175,55,0.4);
     }
     </style>
     """,
@@ -333,15 +354,27 @@ st.markdown(
  
 # --------------------------------------------------------------------------
 # ENCABEZADO / RETRATO
+# (la foto se embebe como <img> dentro del MISMO bloque que el marco dorado,
+#  para que el borde realmente la envuelva)
 # --------------------------------------------------------------------------
-col_a, col_b, col_c = st.columns([1, 2, 1])
-with col_b:
-    st.markdown('<div class="marco-foto">', unsafe_allow_html=True)
-    if os.path.exists(PHOTO_FILE):
-        st.image(PHOTO_FILE, use_container_width=True)
-    else:
-        st.info("Coloca 'abuelo.jpg' en esta carpeta para mostrar la fotografía.")
-    st.markdown("</div>", unsafe_allow_html=True)
+if os.path.exists(PHOTO_FILE):
+    with open(PHOTO_FILE, "rb") as f:
+        foto_principal_bytes = f.read()
+    foto_principal_b64 = base64.b64encode(foto_principal_bytes).decode()
+    _, ext_foto = os.path.splitext(PHOTO_FILE.lower())
+    mime_foto_principal = MIME_POR_EXTENSION.get(ext_foto, "image/jpeg")
+    st.markdown(
+        f"""
+        <div style="text-align:center;">
+            <div class="marco-foto">
+                <img src="data:{mime_foto_principal};base64,{foto_principal_b64}">
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+else:
+    st.info("Coloca 'abuelo.jpg' en esta carpeta para mostrar la fotografía.")
  
 st.markdown(
     '<p style="text-align:center;"><span class="etiqueta-dorada">'
