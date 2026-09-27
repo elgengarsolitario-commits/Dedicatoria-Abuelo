@@ -641,6 +641,23 @@ for row in mensajes_guardados:
         unsafe_allow_html=True,
     )
 
+if fotos_guardadas:
+    piezas_galeria = ['<div class="galeria-grid" style="margin-top:20px;">']
+    for item in fotos_guardadas:
+        piezas_galeria.append(
+            f'''
+            <div class="recuerdo-card">
+                <div class="tarjeta-con-borrar">
+                    <img src="{item['url']}">
+                    <a class="btn-eliminar" href="?del_foto={item['id']}" title="Quitar esta foto">✕</a>
+                </div>
+                <p class="recuerdo-nota">{item['nota']}</p>
+            </div>
+            '''
+        )
+    piezas_galeria.append("</div>")
+    st.markdown("".join(piezas_galeria), unsafe_allow_html=True)
+
 if mensajes_guardados:
     st.markdown('<p class="firma-familia">Con amor eterno, tu familia</p>', unsafe_allow_html=True)
 
@@ -673,10 +690,10 @@ with col2:
 st.markdown("---")
 
 # --------------------------------------------------------------------------
-# GALERÍA DE RECUERDOS FAMILIARES (con opción de quitar)
+# GALERÍA DE RECUERDOS FAMILIARES (agregar / quitar fotos)
 # --------------------------------------------------------------------------
 st.subheader("📷 Galería de Recuerdos Familiares")
-st.caption("Las fotos que agregues aparecerán tenues, de fondo, como recuerdos flotando por toda la página.")
+st.caption("Las fotos que agregues aparecerán tenues, de fondo, y como recuadros junto a las dedicatorias, más arriba en la página.")
 
 with st.form("agregar_foto", clear_on_submit=True):
     nueva_foto = st.file_uploader("Agregar foto familiar", type=["png", "jpg", "jpeg"])
@@ -684,27 +701,11 @@ with st.form("agregar_foto", clear_on_submit=True):
     enviado = st.form_submit_button("Agregar a la galería")
     if enviado and nueva_foto is not None:
         subir_foto(nota.strip(), nueva_foto.getvalue(), nueva_foto.name)
-        st.success("¡Foto agregada como recuerdo permanente!")
+        st.success("¡Foto agregada! Ya aparece junto a las dedicatorias, más arriba.")
         lluvia_corazones()
         st.rerun()
 
-if fotos_guardadas:
-    piezas_galeria = ['<div class="galeria-grid">']
-    for item in fotos_guardadas:
-        piezas_galeria.append(
-            f'''
-            <div class="recuerdo-card">
-                <div class="tarjeta-con-borrar">
-                    <img src="{item['url']}">
-                    <a class="btn-eliminar" href="?del_foto={item['id']}" title="Quitar esta foto">✕</a>
-                </div>
-                <p class="recuerdo-nota">{item['nota']}</p>
-            </div>
-            '''
-        )
-    piezas_galeria.append("</div>")
-    st.markdown("".join(piezas_galeria), unsafe_allow_html=True)
-else:
+if not fotos_guardadas:
     st.info("Aún no hay recuerdos agregados a la galería.")
 
 st.markdown("---")
