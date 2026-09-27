@@ -11,6 +11,7 @@ en la misma carpeta, y ejecútalo con:
  
 import base64
 import os
+import random
  
 import streamlit as st
  
@@ -25,6 +26,17 @@ st.set_page_config(
  
 AUDIO_FILE = "Noches-Vacias.mpeg"
 PHOTO_FILE = "abuelo.jpg"  # coloca aquí la foto principal si la tienes
+
+# Estado de la galería de recuerdos (se necesita desde el principio del script
+# porque las fotos se usan como fondo antes de llegar al formulario)
+if "galeria" not in st.session_state:
+    st.session_state.galeria = []  # lista de (bytes_foto, nota, mime_type)
+
+MIME_POR_EXTENSION = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+}
  
 # --------------------------------------------------------------------------
 # ESTILOS (recreando la paleta dorada / crema del HTML original)
@@ -85,6 +97,7 @@ st.markdown(
     /* Espacio para que la barra fija no tape el contenido */
     .main .block-container {
         position: relative;
+        z-index: 1;
         padding-top: 90px;
     }
     /* Marcas de esquina doradas, estilo "marco de página" */
@@ -108,6 +121,53 @@ st.markdown(
 
     @media print {
         .barra-superior { display: none !important; }
+        .fondo-recuerdos { display: none !important; }
+    }
+
+    /* -------- Fotos de la galería usadas como fondo transparente -------- */
+    .fondo-recuerdos {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        overflow: hidden;
+        pointer-events: none;
+    }
+    .fondo-recuerdos img {
+        position: absolute;
+        opacity: 0.16;
+        filter: sepia(0.35) contrast(0.9);
+        border-radius: 14px;
+        box-shadow: 0 8px 20px rgba(17,29,51,0.15);
+        object-fit: cover;
+    }
+    .lista-recuerdos {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1rem;
+        color: #6b6b6b;
+        text-align: center;
+        line-height: 1.9;
+    }
+
+    /* -------- Lluvia de corazones (reemplaza el confeti) -------- */
+    .lluvia-corazones {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        overflow: hidden;
+        pointer-events: none;
+    }
+    .lluvia-corazones span {
+        position: absolute;
+        bottom: -60px;
+        color: #c1770f;
+        animation-name: flotar-corazon;
+        animation-timing-function: ease-in;
+        animation-fill-mode: forwards;
+    }
+    @keyframes flotar-corazon {
+        0%   { transform: translateY(0) scale(0.8); opacity: 0; }
+        12%  { opacity: 1; }
+        100% { transform: translateY(-110vh) scale(1.05); opacity: 0; }
     }
 
     .titulo-dedicatoria {
@@ -168,6 +228,56 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+
+def mostrar_fotos_de_fondo():
+    """Dibuja las fotos de la galería como recuerdos translúcidos de fondo."""
+    if not st.session_state.galeria:
+        return
+    # Se limita para no saturar la pantalla si hay muchísimas fotos
+    fotos = st.session_state.galeria[:14]
+    piezas = ['<div class="fondo-recuerdos">']
+    for i, (foto_bytes, _nota, mime) in enumerate(fotos):
+        b64 = base64.b64encode(foto_bytes).decode()
+        # posiciones/rotación pseudo-aleatorias pero estables (semilla fija por foto)
+        rnd = random.Random(i * 97 + 13)
+        top = rnd.randint(-5, 85)
+        left = rnd.randint(-5, 85)
+        rot = rnd.randint(-18, 18)
+        ancho = rnd.randint(150, 230)
+        piezas.append(
+            f'<img src="data:{mime};base64,{b64}" '
+            f'style="top:{top}%; left:{left}%; width:{ancho}px; '
+            f'transform: rotate({rot}deg);">'
+        )
+    piezas.append("</div>")
+    st.markdown("".join(piezas), unsafe_allow_html=True)
+
+
+def lluvia_corazones(cantidad: int = 18):
+    """Animación de corazones subiendo y desvaneciéndose (reemplaza st.balloons())."""
+    simbolos = ["❤️", "🕊️", "✨", "🤍"]
+    spans = []
+    for i in range(cantidad):
+        rnd = random.Random()
+        izquierda = rnd.uniform(2, 96)
+        duracion = rnd.uniform(4.5, 7.5)
+        retraso = rnd.uniform(0, 1.4)
+        tamano = rnd.uniform(1.3, 2.3)
+        simbolo = rnd.choice(simbolos)
+        spans.append(
+            f'<span style="left:{izquierda:.1f}%; font-size:{tamano:.2f}rem; '
+            f'animation-duration:{duracion:.2f}s; animation-delay:{retraso:.2f}s;">'
+            f"{simbolo}</span>"
+        )
+    st.markdown(
+        f'<div class="lluvia-corazones">{"".join(spans)}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+# Fondo de recuerdos (se pinta ya, para que quede detrás de todo el contenido)
+mostrar_fotos_de_fondo()
  
 # --------------------------------------------------------------------------
 # MÚSICA DE FONDO — se reproduce automáticamente al abrir la página
@@ -291,40 +401,38 @@ st.markdown('<p class="firma-familia">Con amor eterno, tu familia</p>', unsafe_a
 st.markdown("<br>", unsafe_allow_html=True)
  
 # --------------------------------------------------------------------------
-# ABRAZO VIRTUAL (equivalente al confeti/corazones del HTML original)
+# ABRAZO VIRTUAL (ahora con corazones en vez de globos)
 # --------------------------------------------------------------------------
 col1, col2, col3 = st.columns([1, 1, 1])
 with col2:
     if st.button("❤️ Enviar un Abrazo Virtual", use_container_width=True):
-        st.balloons()
+        lluvia_corazones()
  
 st.markdown("---")
  
 # --------------------------------------------------------------------------
-# GALERÍA DE RECUERDOS FAMILIARES (dinámica, como en el HTML)
+# GALERÍA DE RECUERDOS FAMILIARES
+# (las fotos se muestran como fondo translúcido; aquí solo se listan las notas)
 # --------------------------------------------------------------------------
 st.subheader("📷 Galería de Recuerdos Familiares")
-st.caption("Puedes agregar más fotos especiales con tu abuelo")
- 
-if "galeria" not in st.session_state:
-    st.session_state.galeria = []
+st.caption("Las fotos que agregues aparecerán tenues, de fondo, como recuerdos flotando por toda la página.")
  
 with st.form("agregar_foto", clear_on_submit=True):
     nueva_foto = st.file_uploader("Agregar foto familiar", type=["png", "jpg", "jpeg"])
     nota = st.text_input("Escribe una nota para esta foto:", value="Recuerdo especial")
     enviado = st.form_submit_button("Agregar a la galería")
     if enviado and nueva_foto is not None:
-        st.session_state.galeria.insert(0, (nueva_foto.getvalue(), nota))
-        st.success("¡Foto agregada!")
-        st.balloons()
+        _, ext = os.path.splitext(nueva_foto.name.lower())
+        mime = MIME_POR_EXTENSION.get(ext, "image/jpeg")
+        st.session_state.galeria.insert(0, (nueva_foto.getvalue(), nota, mime))
+        st.success("¡Foto agregada como recuerdo de fondo!")
+        lluvia_corazones()
  
 if st.session_state.galeria:
-    cols = st.columns(3)
-    for i, (foto_bytes, nota) in enumerate(st.session_state.galeria):
-        with cols[i % 3]:
-            st.image(foto_bytes, use_container_width=True, caption=nota)
+    notas = " · ".join(nota for _foto, nota, _mime in st.session_state.galeria)
+    st.markdown(f'<p class="lista-recuerdos">🕊️ {notas}</p>', unsafe_allow_html=True)
 else:
-    st.info("Aún no hay fotos agregadas a la galería.")
+    st.info("Aún no hay recuerdos agregados a la galería.")
  
 st.markdown("---")
 st.caption("Página de Homenaje Especial dedicada a nuestro querido abuelo ❤️")
