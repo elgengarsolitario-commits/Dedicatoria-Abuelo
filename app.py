@@ -490,15 +490,25 @@ barra_superior_html = html(
     <style>
         body {{
             margin: 0; background: transparent;
-            display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;
+            display: flex; flex-wrap: nowrap; justify-content: center; gap: 8px;
             font-family: 'Cormorant Garamond', serif;
-            padding: 4px 0 0 0;
+            padding: 4px 4px 0 4px;
+            overflow: hidden;
         }}
         button {{
-            border-radius: 999px; padding: 8px 18px; font-family: inherit;
-            font-weight: 600; font-size: 0.95rem; cursor: pointer;
+            border-radius: 999px; padding: 8px 16px; font-family: inherit;
+            font-weight: 600; font-size: 0.9rem; cursor: pointer;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
             transition: all 0.2s;
+            white-space: nowrap;
+            flex-shrink: 1;
+        }}
+        @media (max-width: 480px) {{
+            body {{ gap: 6px; }}
+            button {{ padding: 6px 10px; font-size: 0.72rem; }}
+        }}
+        @media (max-width: 360px) {{
+            button {{ padding: 5px 8px; font-size: 0.65rem; }}
         }}
         #btn-musica {{
             background: #fff; border: 1px solid rgba(212,175,55,0.5); color: #333;
@@ -583,7 +593,7 @@ barra_superior_html = html(
     """
 )
 
-components.html(barra_superior_html, height=64)
+components.html(barra_superior_html, height=52)
 
 # --------------------------------------------------------------------------
 # ENCABEZADO / RETRATO
