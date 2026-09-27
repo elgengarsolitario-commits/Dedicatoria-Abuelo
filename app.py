@@ -1,22 +1,21 @@
 """
-Dedicatoria a nuestro abuelo — versión Streamlit
+Dedicatoria a nuestro abuelo — versión Streamlit + Supabase
 --------------------------------------------------
-Coloca este archivo, junto con:
-  - "Noches-Vacias.mpeg"  (música de fondo, mismo directorio)
-  - "abuelo.jpg"          (foto principal, opcional, mismo directorio)
-en la misma carpeta, y ejecútalo con:
- 
-    streamlit run dedicatoria_abuelito.py
+Archivos necesarios en la carpeta:
+  - "Noches-Vacias.mpeg"
+  - "abuelo.jpg" (opcional)
+  - ".streamlit/secrets.toml" (con SUPABASE_URL y SUPABASE_KEY)
 """
- 
+
 import base64
 import os
 import random
 import textwrap
- 
+
 import streamlit as st
 import streamlit.components.v1 as components
- 
+from supabase import create_client, Client
+
 # --------------------------------------------------------------------------
 # CONFIGURACIÓN DE PÁGINA
 # --------------------------------------------------------------------------
@@ -25,16 +24,46 @@ st.set_page_config(
     page_icon="❤️",
     layout="centered",
 )
- 
+
 AUDIO_FILE = "Noches-Vacias.mpeg"
-PHOTO_FILE = "abuelo.jpg"  # coloca aquí la foto principal si la tienes
+PHOTO_FILE = "abuelo.jpg"
 
-# Estado de la galería de recuerdos
+# --------------------------------------------------------------------------
+# CONEXIÓN A SUPABASE
+# --------------------------------------------------------------------------
+@st.cache_resource
+def init_supabase() -> Client:
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    return create_client(url, key)
+
+try:
+    supabase = init_supabase()
+except Exception as e:
+    st.error("Error al conectar con la base de datos de Supabase. Revisa las claves en secrets.toml.")
+    supabase = None
+
+def cargar_dedicatorias():
+    if not supabase:
+        return []
+    try:
+        response = supabase.table("dedicatorias").select("*").order("created_at", desc=True).execute()
+        return [row["texto"] for row in response.data]
+    except Exception as e:
+        st.error(f"Error al cargar mensajes: {e}")
+        return []
+
+def guardar_dedicatoria(texto: str):
+    if not supabase:
+        return
+    try:
+        supabase.table("dedicatorias").insert({"texto": texto}).execute()
+    except Exception as e:
+        st.error(f"Error al guardar mensaje: {e}")
+
+# Estado de la galería de recuerdos (fotos en sesión)
 if "galeria" not in st.session_state:
-    st.session_state.galeria = []  # lista de (bytes_foto, nota, mime_type)
-
-if "mensajes_dedicatoria" not in st.session_state:
-    st.session_state.mensajes_dedicatoria = []  # lista de strings escritos por la familia
+    st.session_state.galeria = []
 
 MIME_POR_EXTENSION = {
     ".png": "image/png",
@@ -43,28 +72,28 @@ MIME_POR_EXTENSION = {
 }
 
 def html(texto: str) -> str:
-    """Quita la indentación común de un bloque HTML/CSS multilínea."""
     return textwrap.dedent(texto).strip()
- 
+
 # --------------------------------------------------------------------------
-# ESTILOS (recreando la paleta dorada / crema del HTML original)
+# ESTILOS (Evitando bloqueos de Scroll)
 # --------------------------------------------------------------------------
 st.markdown(
     html(
         """
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,400&display=swap');
- 
+
         :root {
             --bg-crema: #faf6f0;
             --navy-primary: #111d33;
             --gold-accent: #d4af37;
         }
 
-        /* Ocultamos de forma segura el header y footer para no romper el scroll */
-        [data-testid="stHeader"], footer {
-            display: none !important;
+        [data-testid="stHeader"] {
+            visibility: hidden !important;
+            height: 0px !important;
         }
+        footer { visibility: hidden !important; }
 
         .stApp {
             background-color: var(--bg-crema) !important;
@@ -75,14 +104,12 @@ st.markdown(
             background-position: 0 0, 15px 15px;
         }
 
-        /* Damos un margen superior limpio */
         .main .block-container {
             padding-top: 1rem !important;
             position: relative;
             z-index: 1;
         }
 
-        /* Marcas de esquina doradas, estilo "marco de página" */
         .main .block-container::before,
         .main .block-container::after {
             content: '';
@@ -105,13 +132,12 @@ st.markdown(
             .fondo-recuerdos { display: none !important; }
         }
 
-        /* -------- Fotos de la galería usadas como fondo transparente -------- */
         .fondo-recuerdos {
             position: fixed;
             inset: 0;
             z-index: 0;
             overflow: hidden;
-            pointer-events: none;
+            pointer-events: none !important;
         }
         .fondo-recuerdos img {
             position: absolute;
@@ -120,6 +146,7 @@ st.markdown(
             border-radius: 14px;
             box-shadow: 0 8px 20px rgba(17,29,51,0.15);
             object-fit: cover;
+            pointer-events: none !important;
         }
         .lista-recuerdos {
             font-family: 'Cormorant Garamond', serif;
@@ -129,13 +156,12 @@ st.markdown(
             line-height: 1.9;
         }
 
-        /* -------- Lluvia de corazones -------- */
         .lluvia-corazones {
             position: fixed;
             inset: 0;
             z-index: 1000000;
             overflow: hidden;
-            pointer-events: none;
+            pointer-events: none !important;
         }
         .lluvia-corazones span {
             position: absolute;
@@ -151,7 +177,6 @@ st.markdown(
             100% { transform: translateY(-110vh) scale(1.05); opacity: 0; }
         }
 
-        /* -------- Marco dorado de la foto principal -------- */
         .marco-foto {
             display: inline-block;
             border-radius: 16px;
@@ -217,7 +242,6 @@ st.markdown(
             margin-top: 6px;
         }
 
-        /* -------- Forzar color oscuro en UI de Streamlit -------- */
         .main h1, .main h2, .main h3, .main h4, .main h5, .main h6,
         [data-testid="stHeading"] * { color: #111d33 !important; }
         [data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] *,
@@ -275,9 +299,9 @@ def lluvia_corazones(cantidad: int = 18):
 
 
 mostrar_fotos_de_fondo()
- 
+
 # --------------------------------------------------------------------------
-# MÚSICA DE FONDO + BARRA SUPERIOR (música / imprimir)
+# MÚSICA DE FONDO + BARRA SUPERIOR
 # --------------------------------------------------------------------------
 if os.path.exists(AUDIO_FILE):
     with open(AUDIO_FILE, "rb") as f:
@@ -292,56 +316,58 @@ else:
     audio_tag = ""
     st.warning(f"No se encontró '{AUDIO_FILE}'. Colócalo en la carpeta para que suene la música.")
 
-# La barra ahora vive fluidamente arriba y tiene por defecto "Reproduciendo"
 barra_superior_html = html(
     f"""
-    <style>body {{ margin: 0; background: transparent; overflow: hidden; }}</style>
-    <div id="barra-superior" style="display:flex; justify-content:space-between;
-        align-items:center; padding:8px 20px; background:rgba(250,246,240,0.95);
-        border-bottom:1px solid rgba(212,175,55,0.25); font-family:'Cormorant Garamond', serif;
-        box-sizing:border-box; width:100%; border-radius: 8px;">
-        
-        <button id="btn-musica" style="display:inline-flex; align-items:center; gap:6px;
-            background:#fff; border:1px solid rgba(212,175,55,0.5); border-radius:999px;
-            padding:8px 16px; font-family:'Cormorant Garamond', serif; font-weight:600;
-            font-size:.95rem; color:#333; cursor:pointer;">
-            🎵 Música de fondo: Reproduciendo
-        </button>
-        
-        <button id="btn-imprimir" style="background:#c1770f; color:#fff; border:none;
-            border-radius:999px; padding:8px 16px; font-family:'Cormorant Garamond', serif;
-            font-weight:600; font-size:.95rem; cursor:pointer;">
-            🖨️ Guardar / Imprimir PDF
-        </button>
-        
-        {audio_tag}
-    </div>
-    
+    <style>
+        body {{ 
+            margin: 0; background: transparent; 
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;
+            font-family: 'Cormorant Garamond', serif;
+            padding: 5px;
+        }}
+        button {{
+            border-radius: 999px; padding: 10px 20px; font-family: inherit;
+            font-weight: 600; font-size: 1rem; cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: all 0.2s;
+        }}
+        #btn-musica {{
+            background: #fff; border: 1px solid rgba(212,175,55,0.5); color: #333;
+        }}
+        #btn-imprimir {{
+            background: #c1770f; border: none; color: #fff;
+        }}
+    </style>
+
+    <button id="btn-musica">🎵 Música de fondo: Reproduciendo</button>
+    <button id="btn-imprimir">🖨️ Guardar / Imprimir PDF</button>
+
+    {audio_tag}
+
     <script>
         var audio = document.getElementById("audio-fondo");
         var btnMusica = document.getElementById("btn-musica");
         var btnImprimir = document.getElementById("btn-imprimir");
+        var visualmenteReproduciendo = true;
 
-        // Intenta asegurar la reproducción al cargar. 
-        // Si el navegador la bloquea por permisos, ajusta el texto a "Pausada".
         if (audio) {{
-            var playPromise = audio.play();
-            if (playPromise !== undefined) {{
-                playPromise.catch(function(error) {{
-                    if (btnMusica) btnMusica.innerText = "🎵 Música de fondo: Pausada";
-                }});
-            }}
+            audio.play().catch(function(e) {{
+                console.log("El navegador bloqueó el autoplay temporalmente.");
+            }});
         }}
 
         if (btnMusica) {{
             btnMusica.addEventListener("click", function () {{
                 if (!audio) return;
-                if (audio.paused) {{
-                    audio.play();
-                    btnMusica.innerText = "🎵 Música de fondo: Reproduciendo";
-                }} else {{
+                
+                if (visualmenteReproduciendo) {{
                     audio.pause();
+                    visualmenteReproduciendo = false;
                     btnMusica.innerText = "🎵 Música de fondo: Pausada";
+                }} else {{
+                    audio.play();
+                    visualmenteReproduciendo = true;
+                    btnMusica.innerText = "🎵 Música de fondo: Reproduciendo";
                 }}
             }});
         }}
@@ -355,10 +381,9 @@ barra_superior_html = html(
     """
 )
 
-# Renderizamos la barra sin romper el flujo DOM de Streamlit
-components.html(barra_superior_html, height=56)
+components.html(barra_superior_html, height=110)
 st.markdown("<br>", unsafe_allow_html=True)
- 
+
 # --------------------------------------------------------------------------
 # ENCABEZADO / RETRATO
 # --------------------------------------------------------------------------
@@ -382,11 +407,11 @@ if os.path.exists(PHOTO_FILE):
     )
 else:
     st.info("Coloca 'abuelo.jpg' en esta carpeta para mostrar la fotografía.")
- 
+
 st.markdown('<p style="text-align:center;"><span class="etiqueta-dorada">Homenaje de Amor y Gratitud</span></p>', unsafe_allow_html=True)
 st.markdown('<h1 class="titulo-dedicatoria">A nuestro abuelo: Un hombre, un ejemplo, una historia de lucha y amor</h1>', unsafe_allow_html=True)
 st.markdown("---")
- 
+
 # --------------------------------------------------------------------------
 # TEXTO DE LA DEDICATORIA
 # --------------------------------------------------------------------------
@@ -398,16 +423,16 @@ parrafos = [
 ]
 for p in parrafos:
     st.markdown(f'<p class="texto-dedicatoria">{p}</p>', unsafe_allow_html=True)
- 
+
 st.markdown('<p class="cita-destacada">Hoy honramos al hombre que abrió el camino, al esposo compañero, al padre presente, al abuelo generoso y al bisabuelo sabio. Tu historia de superación y tu legado viven en cada uno de nosotros.</p>', unsafe_allow_html=True)
 st.markdown('<p class="cita-destacada" style="margin-top:24px;">Gracias por tu fuerza, por tu generosidad sin límites y por enseñarnos a luchar siempre por lo nuestro.</p>', unsafe_allow_html=True)
 
 # --------------------------------------------------------------------------
-# DEDICA UNAS PALABRAS
+# DEDICA UNAS PALABRAS (Persistente con Supabase)
 # --------------------------------------------------------------------------
 st.markdown("<br>", unsafe_allow_html=True)
 st.subheader("💛 Dedica unas palabras")
-st.caption("Escribe tu propio mensaje para el abuelo; aparecerá aquí mismo, junto a las demás dedicatorias.")
+st.caption("Escribe tu propio mensaje para el abuelo; se guardará de forma permanente y toda la familia lo podrá leer.")
 
 with st.form("agregar_dedicatoria", clear_on_submit=True):
     nombre_dedicante = st.text_input("Tu nombre (opcional):", value="")
@@ -415,17 +440,20 @@ with st.form("agregar_dedicatoria", clear_on_submit=True):
     enviar_dedicatoria = st.form_submit_button("Agregar mi dedicatoria")
     if enviar_dedicatoria and mensaje_dedicatoria.strip():
         texto_final = mensaje_dedicatoria.strip()
-        if nombre_dedicante.strip(): texto_final += f" — {nombre_dedicante.strip()}"
-        st.session_state.mensajes_dedicatoria.append(texto_final)
-        st.success("¡Gracias! Tu dedicatoria fue agregada.")
+        if nombre_dedicante.strip(): 
+            texto_final += f" — {nombre_dedicante.strip()}"
+        guardar_dedicatoria(texto_final)
+        st.success("¡Gracias! Tu dedicatoria fue guardada para toda la familia.")
         lluvia_corazones()
 
-for mensaje in st.session_state.mensajes_dedicatoria:
+# Cargar mensajes guardados en la base de datos
+mensajes_guardados = cargar_dedicatorias()
+for mensaje in mensajes_guardados:
     st.markdown(f'<p class="cita-destacada" style="margin-top:16px;">{mensaje}</p>', unsafe_allow_html=True)
 
 st.markdown('<p class="firma-familia">Con amor eterno, tu familia</p>', unsafe_allow_html=True)
 st.markdown("<br>", unsafe_allow_html=True)
- 
+
 # --------------------------------------------------------------------------
 # ABRAZO VIRTUAL
 # --------------------------------------------------------------------------
@@ -434,13 +462,13 @@ with col2:
     if st.button("❤️ Enviar un Abrazo Virtual", use_container_width=True):
         lluvia_corazones()
 st.markdown("---")
- 
+
 # --------------------------------------------------------------------------
 # GALERÍA DE RECUERDOS FAMILIARES
 # --------------------------------------------------------------------------
 st.subheader("📷 Galería de Recuerdos Familiares")
 st.caption("Las fotos que agregues aparecerán tenues, de fondo, como recuerdos flotando por toda la página.")
- 
+
 with st.form("agregar_foto", clear_on_submit=True):
     nueva_foto = st.file_uploader("Agregar foto familiar", type=["png", "jpg", "jpeg"])
     nota = st.text_input("Escribe una nota para esta foto:", value="Recuerdo especial")
@@ -451,12 +479,12 @@ with st.form("agregar_foto", clear_on_submit=True):
         st.session_state.galeria.insert(0, (nueva_foto.getvalue(), nota, mime))
         st.success("¡Foto agregada como recuerdo de fondo!")
         lluvia_corazones()
- 
+
 if st.session_state.galeria:
     notas = " · ".join(nota for _foto, nota, _mime in st.session_state.galeria)
     st.markdown(f'<p class="lista-recuerdos">🕊️ {notas}</p>', unsafe_allow_html=True)
 else:
     st.info("Aún no hay recuerdos agregados a la galería.")
- 
+
 st.markdown("---")
 st.caption("Página de Homenaje Especial dedicada a nuestro querido abuelo ❤️")
