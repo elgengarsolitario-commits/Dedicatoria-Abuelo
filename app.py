@@ -19,10 +19,13 @@ import base64
 import os
 import random
 import textwrap
+import uuid
 
 import streamlit as st
 import streamlit.components.v1 as components
 from supabase import create_client, Client
+
+STORAGE_BUCKET = "recuerdos"
 
 # --------------------------------------------------------------------------
 # CONFIGURACIÓN DE PÁGINA
@@ -89,15 +92,71 @@ def eliminar_dedicatoria(id_: int):
         st.error(f"Error al eliminar mensaje: {e}")
 
 
-# Estado de la galería de recuerdos (fotos en sesión)
-if "galeria" not in st.session_state:
-    st.session_state.galeria = []
-
 MIME_POR_EXTENSION = {
     ".png": "image/png",
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
 }
+
+
+def _extraer_url_publica(resultado) -> str:
+    """Distintas versiones de supabase-py devuelven la URL pública en formas
+    distintas (str, o dict con 'publicUrl' / 'publicURL')."""
+    if isinstance(resultado, str):
+        return resultado
+    if isinstance(resultado, dict):
+        return resultado.get("publicUrl") or resultado.get("publicURL") or ""
+    return getattr(resultado, "public_url", "") or ""
+
+
+def cargar_fotos():
+    """Devuelve una lista de dicts: {id, nota, path, url}, permanentes en Supabase."""
+    if not supabase:
+        return []
+    try:
+        response = (
+            supabase.table("fotos")
+            .select("id, nota, path, url")
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return response.data
+    except Exception as e:
+        st.error(f"Error al cargar fotos: {e}")
+        return []
+
+
+def subir_foto(nota: str, file_bytes: bytes, filename: str):
+    """Sube la foto al bucket de Storage y guarda su referencia en la tabla 'fotos'."""
+    if not supabase:
+        return
+    try:
+        _, ext = os.path.splitext(filename.lower())
+        ext = ext if ext in MIME_POR_EXTENSION else ".jpg"
+        mime = MIME_POR_EXTENSION.get(ext, "image/jpeg")
+        path = f"{uuid.uuid4().hex}{ext}"
+
+        supabase.storage.from_(STORAGE_BUCKET).upload(
+            path, file_bytes, {"content-type": mime}
+        )
+        url = _extraer_url_publica(
+            supabase.storage.from_(STORAGE_BUCKET).get_public_url(path)
+        )
+        supabase.table("fotos").insert(
+            {"nota": nota or "Recuerdo especial", "path": path, "url": url}
+        ).execute()
+    except Exception as e:
+        st.error(f"Error al subir la foto: {e}")
+
+
+def eliminar_foto(id_: int, path: str):
+    if not supabase:
+        return
+    try:
+        supabase.storage.from_(STORAGE_BUCKET).remove([path])
+        supabase.table("fotos").delete().eq("id", id_).execute()
+    except Exception as e:
+        st.error(f"Error al eliminar la foto: {e}")
 
 
 def html(texto: str) -> str:
@@ -295,19 +354,20 @@ st.markdown(
 )
 
 
-def mostrar_fotos_de_fondo():
-    if not st.session_state.galeria:
+def mostrar_fotos_de_fondo(fotos_guardadas):
+    if not fotos_guardadas:
         return
-    fotos = st.session_state.galeria[:14]
+    fotos = fotos_guardadas[:14]
     piezas = ['<div class="fondo-recuerdos">']
     for i, item in enumerate(fotos):
-        foto_bytes, _nota, mime = item["bytes"], item["nota"], item["mime"]
-        b64 = base64.b64encode(foto_bytes).decode()
+        url = item.get("url", "")
+        if not url:
+            continue
         rnd = random.Random(i * 97 + 13)
         top, left = rnd.randint(-5, 85), rnd.randint(-5, 85)
         rot, ancho = rnd.randint(-18, 18), rnd.randint(150, 230)
         piezas.append(
-            f'<img src="data:{mime};base64,{b64}" '
+            f'<img src="{url}" '
             f'style="top:{top}%; left:{left}%; width:{ancho}px; '
             f'transform: rotate({rot}deg);">'
         )
@@ -331,7 +391,8 @@ def lluvia_corazones(cantidad: int = 18):
     st.markdown(f'<div class="lluvia-corazones">{"".join(spans)}</div>', unsafe_allow_html=True)
 
 
-mostrar_fotos_de_fondo()
+fotos_guardadas = cargar_fotos()
+mostrar_fotos_de_fondo(fotos_guardadas)
 
 # --------------------------------------------------------------------------
 # MÚSICA DE FONDO + BARRA SUPERIOR
@@ -546,25 +607,21 @@ with st.form("agregar_foto", clear_on_submit=True):
     nota = st.text_input("Escribe una nota para esta foto:", value="Recuerdo especial")
     enviado = st.form_submit_button("Agregar a la galería")
     if enviado and nueva_foto is not None:
-        _, ext = os.path.splitext(nueva_foto.name.lower())
-        mime = MIME_POR_EXTENSION.get(ext, "image/jpeg")
-        st.session_state.galeria.insert(
-            0, {"bytes": nueva_foto.getvalue(), "nota": nota, "mime": mime}
-        )
-        st.success("¡Foto agregada como recuerdo de fondo!")
+        subir_foto(nota.strip(), nueva_foto.getvalue(), nueva_foto.name)
+        st.success("¡Foto agregada como recuerdo permanente!")
         lluvia_corazones()
         st.rerun()
 
-if st.session_state.galeria:
-    for idx, item in enumerate(st.session_state.galeria):
+if fotos_guardadas:
+    for item in fotos_guardadas:
         col_foto, col_nota, col_quitar = st.columns([1, 6, 1])
         with col_foto:
-            st.image(item["bytes"], width=60)
+            st.image(item["url"], width=60)
         with col_nota:
             st.markdown(f'<p class="lista-recuerdos" style="text-align:left;">🕊️ {item["nota"]}</p>', unsafe_allow_html=True)
         with col_quitar:
-            if st.button("🗑️", key=f"del_foto_{idx}", help="Quitar esta foto de la galería"):
-                st.session_state.galeria.pop(idx)
+            if st.button("🗑️", key=f"del_foto_{item['id']}", help="Quitar esta foto de la galería"):
+                eliminar_foto(item["id"], item["path"])
                 st.rerun()
 else:
     st.info("Aún no hay recuerdos agregados a la galería.")
