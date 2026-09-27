@@ -223,8 +223,15 @@ st.markdown(
 
         .main .block-container {
             padding-top: 0rem !important;
+            margin-top: -1.5rem !important;
             position: relative;
             z-index: 1;
+        }
+        section[data-testid="stMain"] {
+            padding-top: 0rem !important;
+        }
+        div[data-testid="stAppViewContainer"] {
+            padding-top: 0rem !important;
         }
 
         .main .block-container::before,
