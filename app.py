@@ -223,7 +223,7 @@ st.markdown(
 
         .main .block-container {
             padding-top: 0rem !important;
-            margin-top: -3.5rem !important;
+            margin-top: -6rem !important;
             position: relative;
             z-index: 1;
         }
@@ -506,19 +506,19 @@ barra_superior_html = html(
             overflow: hidden;
         }}
         button {{
-            border-radius: 999px; padding: 8px 16px; font-family: inherit;
-            font-weight: 600; font-size: 0.9rem; cursor: pointer;
+            border-radius: 999px; padding: 5px 12px; font-family: inherit;
+            font-weight: 600; font-size: 0.72rem; cursor: pointer;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
             transition: all 0.2s;
             white-space: nowrap;
             flex-shrink: 1;
         }}
         @media (max-width: 480px) {{
-            body {{ gap: 6px; }}
-            button {{ padding: 6px 10px; font-size: 0.72rem; }}
+            body {{ gap: 5px; }}
+            button {{ padding: 4px 8px; font-size: 0.6rem; }}
         }}
         @media (max-width: 360px) {{
-            button {{ padding: 5px 8px; font-size: 0.65rem; }}
+            button {{ padding: 3px 6px; font-size: 0.55rem; }}
         }}
         #btn-musica {{
             background: #fff; border: 1px solid rgba(212,175,55,0.5); color: #333;
@@ -603,7 +603,7 @@ barra_superior_html = html(
     """
 )
 
-components.html(barra_superior_html, height=52)
+components.html(barra_superior_html, height=38)
 
 # --------------------------------------------------------------------------
 # ENCABEZADO / RETRATO
