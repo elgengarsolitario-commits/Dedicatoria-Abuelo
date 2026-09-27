@@ -12,6 +12,7 @@ en la misma carpeta, y ejecútalo con:
 import base64
 import os
 import random
+import textwrap
  
 import streamlit as st
  
@@ -37,216 +38,232 @@ MIME_POR_EXTENSION = {
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
 }
+
+
+def html(texto: str) -> str:
+    """Quita la indentación común de un bloque HTML/CSS multilínea.
+
+    Streamlit usa Markdown para renderizar st.markdown(unsafe_allow_html=True).
+    Si el texto tiene 4 o más espacios de indentación al inicio de cada línea,
+    Markdown lo interpreta como un BLOQUE DE CÓDIGO y lo muestra como texto
+    plano en vez de renderizarlo como HTML real (por eso, por ejemplo, la
+    etiqueta <audio> aparecía literalmente escrita en la página). Esta función
+    evita ese problema siempre que construyamos HTML con f-strings indentados.
+    """
+    return textwrap.dedent(texto).strip()
+
  
 # --------------------------------------------------------------------------
 # ESTILOS (recreando la paleta dorada / crema del HTML original)
 # --------------------------------------------------------------------------
 st.markdown(
-    """
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,400&display=swap');
+    html(
+        """
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,400&display=swap');
  
-    :root {
-        --bg-crema: #faf6f0;
-        --navy-primary: #111d33;
-        --gold-accent: #d4af37;
-    }
+        :root {
+            --bg-crema: #faf6f0;
+            --navy-primary: #111d33;
+            --gold-accent: #d4af37;
+        }
 
-    /* Ocultamos el header/menú/footer nativos de Streamlit: los reemplazamos
-       por nuestra propia barra superior, y evitamos que tapen nuestros
-       elementos fijos (tenían un z-index más alto que el nuestro). */
-    header[data-testid="stHeader"],
-    #MainMenu,
-    footer {
-        display: none !important;
-    }
+        /* Ocultamos el header/menú/footer nativos de Streamlit: los reemplazamos
+           por nuestra propia barra superior, y evitamos que tapen nuestros
+           elementos fijos (tenían un z-index más alto que el nuestro). */
+        header[data-testid="stHeader"],
+        #MainMenu,
+        footer {
+            display: none !important;
+        }
 
-    .stApp {
-        background-color: var(--bg-crema) !important;
-        background-image:
-            radial-gradient(rgba(212, 175, 55, 0.12) 1px, transparent 0),
-            radial-gradient(rgba(17, 29, 51, 0.05) 1px, #faf6f0 1px) !important;
-        background-size: 30px 30px;
-        background-position: 0 0, 15px 15px;
-    }
+        .stApp {
+            background-color: var(--bg-crema) !important;
+            background-image:
+                radial-gradient(rgba(212, 175, 55, 0.12) 1px, transparent 0),
+                radial-gradient(rgba(17, 29, 51, 0.05) 1px, #faf6f0 1px) !important;
+            background-size: 30px 30px;
+            background-position: 0 0, 15px 15px;
+        }
 
-    /* -------- Barra superior fija (música / imprimir) -------- */
-    .barra-superior {
-        position: fixed;
-        top: 0; left: 0; right: 0;
-        z-index: 999999;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px 24px;
-        background: rgba(250, 246, 240, 0.95);
-        backdrop-filter: blur(6px);
-        border-bottom: 1px solid rgba(212, 175, 55, 0.25);
-    }
-    .pastilla-boton {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        background: #fff !important;
-        border: 1px solid rgba(212, 175, 55, 0.5);
-        border-radius: 999px;
-        padding: 8px 16px;
-        font-family: 'Cormorant Garamond', serif;
-        font-weight: 600;
-        font-size: .95rem;
-        color: #333 !important;
-        cursor: pointer;
-        text-decoration: none;
-    }
-    .pastilla-boton.imprimir {
-        background: #c1770f !important;
-        color: #fff !important;
-        border: none;
-    }
+        /* -------- Barra superior fija (música / imprimir) -------- */
+        .barra-superior {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 999999;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 24px;
+            background: rgba(250, 246, 240, 0.95);
+            backdrop-filter: blur(6px);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.25);
+        }
+        .pastilla-boton {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #fff !important;
+            border: 1px solid rgba(212, 175, 55, 0.5);
+            border-radius: 999px;
+            padding: 8px 16px;
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 600;
+            font-size: .95rem;
+            color: #333 !important;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .pastilla-boton.imprimir {
+            background: #c1770f !important;
+            color: #fff !important;
+            border: none;
+        }
 
-    /* Espacio para que la barra fija no tape el contenido */
-    .main .block-container {
-        position: relative;
-        z-index: 1;
-        padding-top: 90px;
-    }
-    /* Marcas de esquina doradas, estilo "marco de página" */
-    .main .block-container::before,
-    .main .block-container::after {
-        content: '';
-        position: absolute;
-        top: 8px;
-        width: 30px;
-        height: 30px;
-        border-top: 2px solid #b8860b;
-    }
-    .main .block-container::before {
-        left: 0;
-        border-left: 2px solid #b8860b;
-    }
-    .main .block-container::after {
-        right: 0;
-        border-right: 2px solid #b8860b;
-    }
+        /* Espacio para que la barra fija no tape el contenido */
+        .main .block-container {
+            position: relative;
+            z-index: 1;
+            padding-top: 90px;
+        }
+        /* Marcas de esquina doradas, estilo "marco de página" */
+        .main .block-container::before,
+        .main .block-container::after {
+            content: '';
+            position: absolute;
+            top: 8px;
+            width: 30px;
+            height: 30px;
+            border-top: 2px solid #b8860b;
+        }
+        .main .block-container::before {
+            left: 0;
+            border-left: 2px solid #b8860b;
+        }
+        .main .block-container::after {
+            right: 0;
+            border-right: 2px solid #b8860b;
+        }
 
-    @media print {
-        .barra-superior { display: none !important; }
-        .fondo-recuerdos { display: none !important; }
-    }
+        @media print {
+            .barra-superior { display: none !important; }
+            .fondo-recuerdos { display: none !important; }
+        }
 
-    /* -------- Fotos de la galería usadas como fondo transparente -------- */
-    .fondo-recuerdos {
-        position: fixed;
-        inset: 0;
-        z-index: 0;
-        overflow: hidden;
-        pointer-events: none;
-    }
-    .fondo-recuerdos img {
-        position: absolute;
-        opacity: 0.16;
-        filter: sepia(0.35) contrast(0.9);
-        border-radius: 14px;
-        box-shadow: 0 8px 20px rgba(17,29,51,0.15);
-        object-fit: cover;
-    }
-    .lista-recuerdos {
-        font-family: 'Cormorant Garamond', serif;
-        font-size: 1rem;
-        color: #6b6b6b !important;
-        text-align: center;
-        line-height: 1.9;
-    }
+        /* -------- Fotos de la galería usadas como fondo transparente -------- */
+        .fondo-recuerdos {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        .fondo-recuerdos img {
+            position: absolute;
+            opacity: 0.16;
+            filter: sepia(0.35) contrast(0.9);
+            border-radius: 14px;
+            box-shadow: 0 8px 20px rgba(17,29,51,0.15);
+            object-fit: cover;
+        }
+        .lista-recuerdos {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1rem;
+            color: #6b6b6b !important;
+            text-align: center;
+            line-height: 1.9;
+        }
 
-    /* -------- Lluvia de corazones (reemplaza el confeti) -------- */
-    .lluvia-corazones {
-        position: fixed;
-        inset: 0;
-        z-index: 1000000;
-        overflow: hidden;
-        pointer-events: none;
-    }
-    .lluvia-corazones span {
-        position: absolute;
-        bottom: -60px;
-        color: #c1770f;
-        animation-name: flotar-corazon;
-        animation-timing-function: ease-in;
-        animation-fill-mode: forwards;
-    }
-    @keyframes flotar-corazon {
-        0%   { transform: translateY(0) scale(0.8); opacity: 0; }
-        12%  { opacity: 1; }
-        100% { transform: translateY(-110vh) scale(1.05); opacity: 0; }
-    }
+        /* -------- Lluvia de corazones (reemplaza el confeti) -------- */
+        .lluvia-corazones {
+            position: fixed;
+            inset: 0;
+            z-index: 1000000;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        .lluvia-corazones span {
+            position: absolute;
+            bottom: -60px;
+            color: #c1770f;
+            animation-name: flotar-corazon;
+            animation-timing-function: ease-in;
+            animation-fill-mode: forwards;
+        }
+        @keyframes flotar-corazon {
+            0%   { transform: translateY(0) scale(0.8); opacity: 0; }
+            12%  { opacity: 1; }
+            100% { transform: translateY(-110vh) scale(1.05); opacity: 0; }
+        }
 
-    /* -------- Marco dorado de la foto principal -------- */
-    .marco-foto {
-        display: inline-block;
-        border-radius: 16px;
-        border: 8px solid;
-        border-image: linear-gradient(145deg, #f7e6b5, #b8860b, #e6ca65, #8a6508) 1;
-        box-shadow: 0 20px 40px -10px rgba(17,29,51,0.35), 0 0 25px rgba(212,175,55,0.4);
-        overflow: hidden;
-        line-height: 0;
-    }
-    .marco-foto img {
-        display: block;
-        width: 340px;
-        max-width: 100%;
-        border-radius: 8px;
-    }
+        /* -------- Marco dorado de la foto principal -------- */
+        .marco-foto {
+            display: inline-block;
+            border-radius: 16px;
+            border: 8px solid;
+            border-image: linear-gradient(145deg, #f7e6b5, #b8860b, #e6ca65, #8a6508) 1;
+            box-shadow: 0 20px 40px -10px rgba(17,29,51,0.35), 0 0 25px rgba(212,175,55,0.4);
+            overflow: hidden;
+            line-height: 0;
+        }
+        .marco-foto img {
+            display: block;
+            width: 340px;
+            max-width: 100%;
+            border-radius: 8px;
+        }
 
-    .titulo-dedicatoria {
-        font-family: 'Cinzel', serif;
-        text-align: center;
-        color: #111d33 !important;
-        font-weight: 800;
-        letter-spacing: .5px;
-        font-size: 2rem;
-        margin-bottom: 0;
-    }
-    .etiqueta-dorada {
-        display: inline-block;
-        margin: 0 auto 10px auto;
-        padding: 4px 18px;
-        background: rgba(212, 175, 55, 0.18) !important;
-        color: #7a5c10 !important;
-        border-radius: 999px;
-        font-size: .75rem;
-        font-weight: 700;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        border: 1px solid rgba(212, 175, 55, 0.5);
-    }
-    .texto-dedicatoria {
-        font-family: 'Cormorant Garamond', serif;
-        font-size: 1.35rem;
-        line-height: 1.8;
-        text-align: justify;
-        color: #2b231d !important;
-    }
-    .cita-destacada {
-        font-family: 'Cormorant Garamond', serif;
-        font-weight: 600;
-        font-size: 1.5rem;
-        text-align: center;
-        color: #7a5c10 !important;
-        background: rgba(255, 245, 220, 0.6) !important;
-        padding: 18px;
-        border-left: 4px solid #d4af37;
-        border-radius: 10px;
-    }
-    .firma-familia {
-        text-align: center;
-        font-size: .85rem;
-        letter-spacing: 3px;
-        text-transform: uppercase;
-        color: #6b6b6b !important;
-        margin-top: 6px;
-    }
-    </style>
-    """,
+        .titulo-dedicatoria {
+            font-family: 'Cinzel', serif;
+            text-align: center;
+            color: #111d33 !important;
+            font-weight: 800;
+            letter-spacing: .5px;
+            font-size: 2rem;
+            margin-bottom: 0;
+        }
+        .etiqueta-dorada {
+            display: inline-block;
+            margin: 0 auto 10px auto;
+            padding: 4px 18px;
+            background: rgba(212, 175, 55, 0.18) !important;
+            color: #7a5c10 !important;
+            border-radius: 999px;
+            font-size: .75rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            border: 1px solid rgba(212, 175, 55, 0.5);
+        }
+        .texto-dedicatoria {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.35rem;
+            line-height: 1.8;
+            text-align: justify;
+            color: #2b231d !important;
+        }
+        .cita-destacada {
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 600;
+            font-size: 1.5rem;
+            text-align: center;
+            color: #7a5c10 !important;
+            background: rgba(255, 245, 220, 0.6) !important;
+            padding: 18px;
+            border-left: 4px solid #d4af37;
+            border-radius: 10px;
+        }
+        .firma-familia {
+            text-align: center;
+            font-size: .85rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: #6b6b6b !important;
+            margin-top: 6px;
+        }
+        </style>
+        """
+    ),
     unsafe_allow_html=True,
 )
 
@@ -311,17 +328,19 @@ if os.path.exists(AUDIO_FILE):
         audio_bytes = f.read()
     b64_audio = base64.b64encode(audio_bytes).decode()
     st.markdown(
-        f"""
-        <audio
-            id="audio-fondo"
-            autoplay
-            loop
-            onplay="document.getElementById('music-label').innerText='🎵 Música de fondo: Reproduciendo'"
-            onpause="document.getElementById('music-label').innerText='🎵 Música de fondo: Pausada'"
-        >
-            <source src="data:audio/mpeg;base64,{b64_audio}" type="audio/mpeg">
-        </audio>
-        """,
+        html(
+            f"""
+            <audio
+                id="audio-fondo"
+                autoplay
+                loop
+                onplay="document.getElementById('music-label').innerText='🎵 Música de fondo: Reproduciendo'"
+                onpause="document.getElementById('music-label').innerText='🎵 Música de fondo: Pausada'"
+            >
+                <source src="data:audio/mpeg;base64,{b64_audio}" type="audio/mpeg">
+            </audio>
+            """
+        ),
         unsafe_allow_html=True,
     )
 else:
@@ -334,21 +353,23 @@ else:
 # BARRA SUPERIOR: toggle de música + botón de imprimir/guardar PDF
 # --------------------------------------------------------------------------
 st.markdown(
-    """
-    <div class="barra-superior">
-        <span
-            id="music-label"
-            class="pastilla-boton"
-            onclick="
-                var a = document.getElementById('audio-fondo');
-                if (a) { a.paused ? a.play() : a.pause(); }
-            "
-        >🎵 Música de fondo: Pausada</span>
-        <span class="pastilla-boton imprimir" onclick="window.print()">
-            🖨️ Guardar / Imprimir PDF
-        </span>
-    </div>
-    """,
+    html(
+        """
+        <div class="barra-superior">
+            <span
+                id="music-label"
+                class="pastilla-boton"
+                onclick="
+                    var a = document.getElementById('audio-fondo');
+                    if (a) { a.paused ? a.play() : a.pause(); }
+                "
+            >🎵 Música de fondo: Pausada</span>
+            <span class="pastilla-boton imprimir" onclick="window.print()">
+                🖨️ Guardar / Imprimir PDF
+            </span>
+        </div>
+        """
+    ),
     unsafe_allow_html=True,
 )
  
@@ -364,13 +385,15 @@ if os.path.exists(PHOTO_FILE):
     _, ext_foto = os.path.splitext(PHOTO_FILE.lower())
     mime_foto_principal = MIME_POR_EXTENSION.get(ext_foto, "image/jpeg")
     st.markdown(
-        f"""
-        <div style="text-align:center;">
-            <div class="marco-foto">
-                <img src="data:{mime_foto_principal};base64,{foto_principal_b64}">
+        html(
+            f"""
+            <div style="text-align:center;">
+                <div class="marco-foto">
+                    <img src="data:{mime_foto_principal};base64,{foto_principal_b64}">
+                </div>
             </div>
-        </div>
-        """,
+            """
+        ),
         unsafe_allow_html=True,
     )
 else:
