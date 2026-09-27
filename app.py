@@ -207,6 +207,9 @@ st.markdown(
             visibility: hidden !important;
             height: 0px !important;
         }
+        [data-testid="stDecoration"] {
+            display: none !important;
+        }
         footer { visibility: hidden !important; }
 
         .stApp {
@@ -219,7 +222,7 @@ st.markdown(
         }
 
         .main .block-container {
-            padding-top: 0.2rem !important;
+            padding-top: 0rem !important;
             position: relative;
             z-index: 1;
         }
