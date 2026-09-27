@@ -327,18 +327,22 @@ if os.path.exists(AUDIO_FILE):
     with open(AUDIO_FILE, "rb") as f:
         audio_bytes = f.read()
     b64_audio = base64.b64encode(audio_bytes).decode()
+    # NOTA: envolvemos el <audio> dentro de un <div> a propósito. El parser de
+    # Markdown que usa Streamlit solo reconoce automáticamente como "bloque
+    # HTML puro" (que pasa intacto, sin tocar) a un conjunto fijo de etiquetas
+    # como <div>, <p>, <style>, etc. La etiqueta <audio> NO está en esa lista,
+    # así que si va suelta, Markdown la trata como texto y la destroza
+    # (justo el bug que viste: el tag aparecía como texto plano). Al meterla
+    # dentro de un <div>, Markdown reconoce el bloque y respeta todo su
+    # contenido interno tal cual, incluido el <audio>.
     st.markdown(
         html(
             f"""
-            <audio
-                id="audio-fondo"
-                autoplay
-                loop
-                onplay="document.getElementById('music-label').innerText='🎵 Música de fondo: Reproduciendo'"
-                onpause="document.getElementById('music-label').innerText='🎵 Música de fondo: Pausada'"
-            >
-                <source src="data:audio/mpeg;base64,{b64_audio}" type="audio/mpeg">
+            <div style="display:none;">
+            <audio id="audio-fondo" autoplay loop onplay="document.getElementById('music-label').innerText='🎵 Música de fondo: Reproduciendo'" onpause="document.getElementById('music-label').innerText='🎵 Música de fondo: Pausada'">
+            <source src="data:audio/mpeg;base64,{b64_audio}" type="audio/mpeg">
             </audio>
+            </div>
             """
         ),
         unsafe_allow_html=True,
