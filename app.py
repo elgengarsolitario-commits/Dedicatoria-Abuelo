@@ -362,17 +362,17 @@ st.markdown(
         }
         .btn-eliminar {
             position: absolute;
-            top: -8px;
-            right: -8px;
-            width: 22px;
-            height: 22px;
+            top: 6px;
+            right: 6px;
+            width: 17px;
+            height: 17px;
             border-radius: 50%;
             background: #111d33;
             color: #fff !important;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 12px;
+            font-size: 9px;
             font-weight: 700;
             text-decoration: none !important;
             box-shadow: 0 2px 5px rgba(0,0,0,0.35);
