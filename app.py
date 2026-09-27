@@ -15,6 +15,7 @@ import random
 import textwrap
  
 import streamlit as st
+import streamlit.components.v1 as components
  
 # --------------------------------------------------------------------------
 # CONFIGURACIÓN DE PÁGINA
@@ -32,6 +33,9 @@ PHOTO_FILE = "abuelo.jpg"  # coloca aquí la foto principal si la tienes
 # porque las fotos se usan como fondo antes de llegar al formulario)
 if "galeria" not in st.session_state:
     st.session_state.galeria = []  # lista de (bytes_foto, nota, mime_type)
+
+if "mensajes_dedicatoria" not in st.session_state:
+    st.session_state.mensajes_dedicatoria = []  # lista de strings escritos por la familia
 
 MIME_POR_EXTENSION = {
     ".png": "image/png",
@@ -261,6 +265,43 @@ st.markdown(
             color: #6b6b6b !important;
             margin-top: 6px;
         }
+
+        /* -------- Forzamos color oscuro en los elementos NATIVOS de Streamlit
+           (subtítulos, captions, labels, uploader, alertas). Si el tema del
+           navegador/Streamlit es oscuro, estos elementos salen en texto claro
+           por defecto y se pierden sobre nuestro fondo crema. No tocamos
+           nuestras propias clases (texto-dedicatoria, cita-destacada, etc.)
+           porque esas ya fijan su color explícitamente más abajo. -------- */
+        .main h1, .main h2, .main h3, .main h4, .main h5, .main h6,
+        [data-testid="stHeading"] * {
+            color: #111d33 !important;
+        }
+        [data-testid="stCaptionContainer"],
+        [data-testid="stCaptionContainer"] *,
+        .main .stCaption {
+            color: #6b6b6b !important;
+        }
+        [data-testid="stWidgetLabel"] p,
+        [data-testid="stWidgetLabel"] label,
+        .main label {
+            color: #2b231d !important;
+        }
+        [data-testid="stFileUploaderDropzoneInstructions"],
+        [data-testid="stFileUploaderDropzoneInstructions"] * {
+            color: #2b231d !important;
+        }
+        [data-testid="stFileUploaderDropzone"] small,
+        [data-testid="stFileUploaderDropzone"] span {
+            color: #6b6b6b !important;
+        }
+        [data-testid="stAlert"],
+        [data-testid="stAlert"] * {
+            color: #2b231d !important;
+        }
+        .stTextArea textarea, .stTextInput input {
+            color: #2b231d !important;
+            background-color: #fffdf8 !important;
+        }
         </style>
         """
     ),
@@ -318,64 +359,98 @@ def lluvia_corazones(cantidad: int = 18):
 mostrar_fotos_de_fondo()
  
 # --------------------------------------------------------------------------
-# MÚSICA DE FONDO — se reproduce automáticamente al abrir la página
-# (los navegadores pueden bloquear el autoplay con sonido hasta que el
-# usuario interactúe una vez con la pestaña; es una restricción del propio
-# navegador, no de Streamlit)
+# MÚSICA DE FONDO + BARRA SUPERIOR (música / imprimir)
 # --------------------------------------------------------------------------
+# IMPORTANTE: st.markdown(unsafe_allow_html=True) renderiza el HTML, pero por
+# seguridad Streamlit IGNORA cualquier JavaScript dentro de ese HTML (scripts
+# y atributos onclick/onplay/onpause no se ejecutan nunca). Por eso los
+# botones no reaccionaban al hacer clic. La única forma de tener JavaScript
+# que realmente funcione en Streamlit es con st.components.v1.html(), que
+# crea un <iframe> real donde sí se ejecutan los scripts. Por eso movemos el
+# audio y los botones ahí adentro.
 if os.path.exists(AUDIO_FILE):
     with open(AUDIO_FILE, "rb") as f:
         audio_bytes = f.read()
     b64_audio = base64.b64encode(audio_bytes).decode()
-    # NOTA: envolvemos el <audio> dentro de un <div> a propósito. El parser de
-    # Markdown que usa Streamlit solo reconoce automáticamente como "bloque
-    # HTML puro" (que pasa intacto, sin tocar) a un conjunto fijo de etiquetas
-    # como <div>, <p>, <style>, etc. La etiqueta <audio> NO está en esa lista,
-    # así que si va suelta, Markdown la trata como texto y la destroza
-    # (justo el bug que viste: el tag aparecía como texto plano). Al meterla
-    # dentro de un <div>, Markdown reconoce el bloque y respeta todo su
-    # contenido interno tal cual, incluido el <audio>.
-    st.markdown(
-        html(
-            f"""
-            <div style="display:none;">
-            <audio id="audio-fondo" autoplay loop onplay="document.getElementById('music-label').innerText='🎵 Música de fondo: Reproduciendo'" onpause="document.getElementById('music-label').innerText='🎵 Música de fondo: Pausada'">
-            <source src="data:audio/mpeg;base64,{b64_audio}" type="audio/mpeg">
-            </audio>
-            </div>
-            """
-        ),
-        unsafe_allow_html=True,
+    audio_tag = (
+        f'<audio id="audio-fondo" autoplay loop>'
+        f'<source src="data:audio/mpeg;base64,{b64_audio}" type="audio/mpeg">'
+        f"</audio>"
     )
 else:
+    audio_tag = ""
     st.warning(
         f"No se encontró '{AUDIO_FILE}' en la carpeta del proyecto. "
         "Copia el archivo de música ahí para que suene automáticamente."
     )
 
-# --------------------------------------------------------------------------
-# BARRA SUPERIOR: toggle de música + botón de imprimir/guardar PDF
-# --------------------------------------------------------------------------
-st.markdown(
-    html(
-        """
-        <div class="barra-superior">
-            <span
-                id="music-label"
-                class="pastilla-boton"
-                onclick="
-                    var a = document.getElementById('audio-fondo');
-                    if (a) { a.paused ? a.play() : a.pause(); }
-                "
-            >🎵 Música de fondo: Pausada</span>
-            <span class="pastilla-boton imprimir" onclick="window.print()">
-                🖨️ Guardar / Imprimir PDF
-            </span>
-        </div>
-        """
-    ),
-    unsafe_allow_html=True,
+barra_superior_html = html(
+    f"""
+    <div id="barra-superior" style="display:flex; justify-content:space-between;
+        align-items:center; padding:8px 20px; background:rgba(250,246,240,0.95);
+        border-bottom:1px solid rgba(212,175,55,0.25); font-family:'Cormorant Garamond', serif;
+        box-sizing:border-box;">
+        <button id="btn-musica" style="display:inline-flex; align-items:center; gap:6px;
+            background:#fff; border:1px solid rgba(212,175,55,0.5); border-radius:999px;
+            padding:8px 16px; font-family:'Cormorant Garamond', serif; font-weight:600;
+            font-size:.95rem; color:#333; cursor:pointer;">
+            🎵 Música de fondo: Pausada
+        </button>
+        <button id="btn-imprimir" style="background:#c1770f; color:#fff; border:none;
+            border-radius:999px; padding:8px 16px; font-family:'Cormorant Garamond', serif;
+            font-weight:600; font-size:.95rem; cursor:pointer;">
+            🖨️ Guardar / Imprimir PDF
+        </button>
+        {audio_tag}
+    </div>
+    <script>
+        // Intentamos fijar esta barra en la parte superior de la ventana real
+        // (no solo del iframe), tomando el propio iframe como referencia.
+        try {{
+            var marco = window.frameElement;
+            if (marco) {{
+                marco.style.position = "fixed";
+                marco.style.top = "0";
+                marco.style.left = "0";
+                marco.style.right = "0";
+                marco.style.width = "100%";
+                marco.style.zIndex = "999999";
+                marco.style.border = "none";
+            }}
+        }} catch (e) {{ /* si el navegador bloquea el acceso, seguimos igual */ }}
+
+        var audio = document.getElementById("audio-fondo");
+        var btnMusica = document.getElementById("btn-musica");
+        var btnImprimir = document.getElementById("btn-imprimir");
+
+        if (btnMusica) {{
+            btnMusica.addEventListener("click", function () {{
+                if (!audio) return;
+                if (audio.paused) {{
+                    audio.play();
+                    btnMusica.innerText = "🎵 Música de fondo: Reproduciendo";
+                }} else {{
+                    audio.pause();
+                    btnMusica.innerText = "🎵 Música de fondo: Pausada";
+                }}
+            }});
+        }}
+
+        if (btnImprimir) {{
+            btnImprimir.addEventListener("click", function () {{
+                // Imprimimos la ventana principal (no el iframe) porque ahí
+                // está todo el contenido de la dedicatoria.
+                try {{ window.parent.print(); }} catch (e) {{ window.print(); }}
+            }});
+        }}
+    </script>
+    """
 )
+components.html(barra_superior_html, height=56)
+
+# Como la barra ahora vive en un iframe fijo, dejamos un espacio equivalente
+# arriba del contenido para que no quede tapado.
+st.markdown(html("<div style='height:16px;'></div>"), unsafe_allow_html=True)
  
 # --------------------------------------------------------------------------
 # ENCABEZADO / RETRATO
@@ -456,6 +531,33 @@ st.markdown(
     "generosidad sin límites y por enseñarnos a luchar siempre por lo nuestro.</p>",
     unsafe_allow_html=True,
 )
+
+# --------------------------------------------------------------------------
+# DEDICA UNAS PALABRAS: cada quien de la familia puede dejar su propio
+# mensaje, que aparece como una cita destacada más, junto a las de arriba.
+# --------------------------------------------------------------------------
+st.markdown("<br>", unsafe_allow_html=True)
+st.subheader("💛 Dedica unas palabras")
+st.caption("Escribe tu propio mensaje para el abuelo; aparecerá aquí mismo, junto a las demás dedicatorias.")
+
+with st.form("agregar_dedicatoria", clear_on_submit=True):
+    nombre_dedicante = st.text_input("Tu nombre (opcional):", value="")
+    mensaje_dedicatoria = st.text_area("Tu dedicatoria:", value="", height=100)
+    enviar_dedicatoria = st.form_submit_button("Agregar mi dedicatoria")
+    if enviar_dedicatoria and mensaje_dedicatoria.strip():
+        texto_final = mensaje_dedicatoria.strip()
+        if nombre_dedicante.strip():
+            texto_final += f" — {nombre_dedicante.strip()}"
+        st.session_state.mensajes_dedicatoria.append(texto_final)
+        st.success("¡Gracias! Tu dedicatoria fue agregada.")
+        lluvia_corazones()
+
+for mensaje in st.session_state.mensajes_dedicatoria:
+    st.markdown(
+        f'<p class="cita-destacada" style="margin-top:16px;">{mensaje}</p>',
+        unsafe_allow_html=True,
+    )
+
 st.markdown('<p class="firma-familia">Con amor eterno, tu familia</p>', unsafe_allow_html=True)
  
 st.markdown("<br>", unsafe_allow_html=True)
