@@ -73,12 +73,25 @@ st.markdown(
         }
 
         /* Ocultamos el header/menú/footer nativos de Streamlit: los reemplazamos
-           por nuestra propia barra superior, y evitamos que tapen nuestros
-           elementos fijos (tenían un z-index más alto que el nuestro). */
-        header[data-testid="stHeader"],
+           por nuestra propia barra superior. Usamos visibility: hidden en el header
+           para evitar el bug de Streamlit que bloquea el scroll al usar display: none. */
+        header[data-testid="stHeader"] {
+            visibility: hidden !important;
+            height: 0px !important;
+            min-height: 0px !important;
+            padding: 0px !important;
+        }
         #MainMenu,
         footer {
             display: none !important;
+        }
+        
+        /* Aseguramos que la página principal pueda desplazarse (solución al bug de scroll) */
+        [data-testid="stAppViewContainer"], 
+        .stApp, 
+        .main {
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
         }
 
         .stApp {
