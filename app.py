@@ -29,8 +29,7 @@ st.set_page_config(
 AUDIO_FILE = "Noches-Vacias.mpeg"
 PHOTO_FILE = "abuelo.jpg"  # coloca aquí la foto principal si la tienes
 
-# Estado de la galería de recuerdos (se necesita desde el principio del script
-# porque las fotos se usan como fondo antes de llegar al formulario)
+# Estado de la galería de recuerdos
 if "galeria" not in st.session_state:
     st.session_state.galeria = []  # lista de (bytes_foto, nota, mime_type)
 
@@ -43,11 +42,9 @@ MIME_POR_EXTENSION = {
     ".jpeg": "image/jpeg",
 }
 
-
 def html(texto: str) -> str:
     """Quita la indentación común de un bloque HTML/CSS multilínea."""
     return textwrap.dedent(texto).strip()
-
  
 # --------------------------------------------------------------------------
 # ESTILOS (recreando la paleta dorada / crema del HTML original)
@@ -64,22 +61,9 @@ st.markdown(
             --gold-accent: #d4af37;
         }
 
-        /* --- ARREGLO DEFINITIVO PARA EL SCROLL --- */
-        /* En lugar de borrar el header (lo cual rompe el layout de Streamlit),
-           lo hacemos completamente transparente y le quitamos la interacción. */
-        header[data-testid="stHeader"] {
-            opacity: 0 !important;
-            pointer-events: none !important;
-            height: 0px !important;
-        }
-        #MainMenu, footer {
+        /* Ocultamos de forma segura el header y footer para no romper el scroll */
+        [data-testid="stHeader"], footer {
             display: none !important;
-        }
-        
-        /* Aseguramos explícitamente que los contenedores permitan arrastrar/hacer scroll */
-        html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
-            overflow-y: auto !important;
-            overscroll-behavior-y: auto !important;
         }
 
         .stApp {
@@ -91,67 +75,33 @@ st.markdown(
             background-position: 0 0, 15px 15px;
         }
 
-        /* -------- Barra superior fija (música / imprimir) -------- */
-        .barra-superior {
-            position: fixed;
-            top: 0; left: 0; right: 0;
-            z-index: 999999;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 24px;
-            background: rgba(250, 246, 240, 0.95);
-            backdrop-filter: blur(6px);
-            border-bottom: 1px solid rgba(212, 175, 55, 0.25);
-        }
-        .pastilla-boton {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: #fff !important;
-            border: 1px solid rgba(212, 175, 55, 0.5);
-            border-radius: 999px;
-            padding: 8px 16px;
-            font-family: 'Cormorant Garamond', serif;
-            font-weight: 600;
-            font-size: .95rem;
-            color: #333 !important;
-            cursor: pointer;
-            text-decoration: none;
-        }
-        .pastilla-boton.imprimir {
-            background: #c1770f !important;
-            color: #fff !important;
-            border: none;
-        }
-
-        /* Espacio para que la barra fija no tape el contenido */
+        /* Damos un margen superior limpio */
         .main .block-container {
+            padding-top: 1rem !important;
             position: relative;
             z-index: 1;
-            padding-top: 90px;
         }
+
         /* Marcas de esquina doradas, estilo "marco de página" */
         .main .block-container::before,
         .main .block-container::after {
             content: '';
             position: absolute;
-            top: 8px;
+            top: 20px;
             width: 30px;
             height: 30px;
             border-top: 2px solid #b8860b;
         }
         .main .block-container::before {
-            left: 0;
+            left: 20px;
             border-left: 2px solid #b8860b;
         }
         .main .block-container::after {
-            right: 0;
+            right: 20px;
             border-right: 2px solid #b8860b;
         }
 
         @media print {
-            .barra-superior { display: none !important; }
             .fondo-recuerdos { display: none !important; }
         }
 
@@ -159,7 +109,7 @@ st.markdown(
         .fondo-recuerdos {
             position: fixed;
             inset: 0;
-            z-index: -1; /* Enviado completamente al fondo para no bloquear toques */
+            z-index: 0;
             overflow: hidden;
             pointer-events: none;
         }
@@ -179,7 +129,7 @@ st.markdown(
             line-height: 1.9;
         }
 
-        /* -------- Lluvia de corazones (reemplaza el confeti) -------- */
+        /* -------- Lluvia de corazones -------- */
         .lluvia-corazones {
             position: fixed;
             inset: 0;
@@ -267,15 +217,22 @@ st.markdown(
             margin-top: 6px;
         }
 
-        /* Colores nativos de Streamlit */
+        /* -------- Forzar color oscuro en UI de Streamlit -------- */
         .main h1, .main h2, .main h3, .main h4, .main h5, .main h6,
         [data-testid="stHeading"] * { color: #111d33 !important; }
-        [data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] *, .main .stCaption { color: #6b6b6b !important; }
-        [data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] label, .main label { color: #2b231d !important; }
-        [data-testid="stFileUploaderDropzoneInstructions"], [data-testid="stFileUploaderDropzoneInstructions"] * { color: #2b231d !important; }
-        [data-testid="stFileUploaderDropzone"] small, [data-testid="stFileUploaderDropzone"] span { color: #6b6b6b !important; }
+        [data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] *,
+        .main .stCaption { color: #6b6b6b !important; }
+        [data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] label,
+        .main label { color: #2b231d !important; }
+        [data-testid="stFileUploaderDropzoneInstructions"],
+        [data-testid="stFileUploaderDropzoneInstructions"] * { color: #2b231d !important; }
+        [data-testid="stFileUploaderDropzone"] small,
+        [data-testid="stFileUploaderDropzone"] span { color: #6b6b6b !important; }
         [data-testid="stAlert"], [data-testid="stAlert"] * { color: #2b231d !important; }
-        .stTextArea textarea, .stTextInput input { color: #2b231d !important; background-color: #fffdf8 !important; }
+        .stTextArea textarea, .stTextInput input {
+            color: #2b231d !important;
+            background-color: #fffdf8 !important;
+        }
         </style>
         """
     ),
@@ -284,18 +241,14 @@ st.markdown(
 
 
 def mostrar_fotos_de_fondo():
-    """Dibuja las fotos de la galería como recuerdos translúcidos de fondo."""
-    if not st.session_state.galeria:
-        return
+    if not st.session_state.galeria: return
     fotos = st.session_state.galeria[:14]
     piezas = ['<div class="fondo-recuerdos">']
     for i, (foto_bytes, _nota, mime) in enumerate(fotos):
         b64 = base64.b64encode(foto_bytes).decode()
         rnd = random.Random(i * 97 + 13)
-        top = rnd.randint(-5, 85)
-        left = rnd.randint(-5, 85)
-        rot = rnd.randint(-18, 18)
-        ancho = rnd.randint(150, 230)
+        top, left = rnd.randint(-5, 85), rnd.randint(-5, 85)
+        rot, ancho = rnd.randint(-18, 18), rnd.randint(150, 230)
         piezas.append(
             f'<img src="data:{mime};base64,{b64}" '
             f'style="top:{top}%; left:{left}%; width:{ancho}px; '
@@ -306,32 +259,25 @@ def mostrar_fotos_de_fondo():
 
 
 def lluvia_corazones(cantidad: int = 18):
-    """Animación de corazones subiendo y desvaneciéndose (reemplaza st.balloons())."""
     simbolos = ["❤️", "🕊️", "✨", "🤍"]
     spans = []
     for i in range(cantidad):
         rnd = random.Random()
-        izquierda = rnd.uniform(2, 96)
-        duracion = rnd.uniform(4.5, 7.5)
-        retraso = rnd.uniform(0, 1.4)
-        tamano = rnd.uniform(1.3, 2.3)
+        izquierda, duracion = rnd.uniform(2, 96), rnd.uniform(4.5, 7.5)
+        retraso, tamano = rnd.uniform(0, 1.4), rnd.uniform(1.3, 2.3)
         simbolo = rnd.choice(simbolos)
         spans.append(
             f'<span style="left:{izquierda:.1f}%; font-size:{tamano:.2f}rem; '
             f'animation-duration:{duracion:.2f}s; animation-delay:{retraso:.2f}s;">'
             f"{simbolo}</span>"
         )
-    st.markdown(
-        f'<div class="lluvia-corazones">{"".join(spans)}</div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown(f'<div class="lluvia-corazones">{"".join(spans)}</div>', unsafe_allow_html=True)
 
 
-# Fondo de recuerdos 
 mostrar_fotos_de_fondo()
  
 # --------------------------------------------------------------------------
-# MÚSICA DE FONDO + BARRA SUPERIOR 
+# MÚSICA DE FONDO + BARRA SUPERIOR (música / imprimir)
 # --------------------------------------------------------------------------
 if os.path.exists(AUDIO_FILE):
     with open(AUDIO_FILE, "rb") as f:
@@ -344,51 +290,48 @@ if os.path.exists(AUDIO_FILE):
     )
 else:
     audio_tag = ""
-    st.warning(
-        f"No se encontró '{AUDIO_FILE}' en la carpeta del proyecto. "
-        "Copia el archivo de música ahí para que suene automáticamente."
-    )
+    st.warning(f"No se encontró '{AUDIO_FILE}'. Colócalo en la carpeta para que suene la música.")
 
+# La barra ahora vive fluidamente arriba y tiene por defecto "Reproduciendo"
 barra_superior_html = html(
     f"""
+    <style>body {{ margin: 0; background: transparent; overflow: hidden; }}</style>
     <div id="barra-superior" style="display:flex; justify-content:space-between;
         align-items:center; padding:8px 20px; background:rgba(250,246,240,0.95);
         border-bottom:1px solid rgba(212,175,55,0.25); font-family:'Cormorant Garamond', serif;
-        box-sizing:border-box;">
+        box-sizing:border-box; width:100%; border-radius: 8px;">
+        
         <button id="btn-musica" style="display:inline-flex; align-items:center; gap:6px;
             background:#fff; border:1px solid rgba(212,175,55,0.5); border-radius:999px;
             padding:8px 16px; font-family:'Cormorant Garamond', serif; font-weight:600;
             font-size:.95rem; color:#333; cursor:pointer;">
-            🎵 Música de fondo: Pausada
+            🎵 Música de fondo: Reproduciendo
         </button>
+        
         <button id="btn-imprimir" style="background:#c1770f; color:#fff; border:none;
             border-radius:999px; padding:8px 16px; font-family:'Cormorant Garamond', serif;
             font-weight:600; font-size:.95rem; cursor:pointer;">
             🖨️ Guardar / Imprimir PDF
         </button>
+        
         {audio_tag}
     </div>
+    
     <script>
-        try {{
-            var marco = window.frameElement;
-            if (marco) {{
-                marco.style.position = "fixed";
-                marco.style.top = "0";
-                marco.style.left = "0";
-                marco.style.right = "0";
-                marco.style.width = "100%";
-                /* CRÍTICO: Limitamos explícitamente la altura del iframe para evitar 
-                   que cubra la pantalla y bloquee los eventos táctiles/arrastre en móviles */
-                marco.style.height = "65px"; 
-                marco.style.maxHeight = "65px";
-                marco.style.zIndex = "999999";
-                marco.style.border = "none";
-            }}
-        }} catch (e) {{ }}
-
         var audio = document.getElementById("audio-fondo");
         var btnMusica = document.getElementById("btn-musica");
         var btnImprimir = document.getElementById("btn-imprimir");
+
+        // Intenta asegurar la reproducción al cargar. 
+        // Si el navegador la bloquea por permisos, ajusta el texto a "Pausada".
+        if (audio) {{
+            var playPromise = audio.play();
+            if (playPromise !== undefined) {{
+                playPromise.catch(function(error) {{
+                    if (btnMusica) btnMusica.innerText = "🎵 Música de fondo: Pausada";
+                }});
+            }}
+        }}
 
         if (btnMusica) {{
             btnMusica.addEventListener("click", function () {{
@@ -411,10 +354,10 @@ barra_superior_html = html(
     </script>
     """
 )
-components.html(barra_superior_html, height=65)
 
-# Espacio equivalente
-st.markdown(html("<div style='height:16px;'></div>"), unsafe_allow_html=True)
+# Renderizamos la barra sin romper el flujo DOM de Streamlit
+components.html(barra_superior_html, height=56)
+st.markdown("<br>", unsafe_allow_html=True)
  
 # --------------------------------------------------------------------------
 # ENCABEZADO / RETRATO
@@ -440,59 +383,24 @@ if os.path.exists(PHOTO_FILE):
 else:
     st.info("Coloca 'abuelo.jpg' en esta carpeta para mostrar la fotografía.")
  
-st.markdown(
-    '<p style="text-align:center;"><span class="etiqueta-dorada">'
-    "Homenaje de Amor y Gratitud</span></p>",
-    unsafe_allow_html=True,
-)
-st.markdown(
-    '<h1 class="titulo-dedicatoria">A nuestro abuelo: Un hombre, un ejemplo, '
-    "una historia de lucha y amor</h1>",
-    unsafe_allow_html=True,
-)
+st.markdown('<p style="text-align:center;"><span class="etiqueta-dorada">Homenaje de Amor y Gratitud</span></p>', unsafe_allow_html=True)
+st.markdown('<h1 class="titulo-dedicatoria">A nuestro abuelo: Un hombre, un ejemplo, una historia de lucha y amor</h1>', unsafe_allow_html=True)
 st.markdown("---")
  
 # --------------------------------------------------------------------------
 # TEXTO DE LA DEDICATORIA
 # --------------------------------------------------------------------------
 parrafos = [
-    "Desde las tierras altas de Apurímac hasta el suelo de Chilca, tu camino estuvo "
-    "trazado por la valentía y la determinación. Llegaste buscando a un hermano y "
-    "encontraste un hogar, una vida y un destino. Fue aquí donde conociste a nuestra "
-    "abuela Elena y, juntos, sembraron la semilla de una gran familia que floreció en "
-    "12 hijos, convirtiéndose en el pilar más firme de tu vida.",
-    "Como hombre, nos enseñaste el verdadero significado de la palabra lealtad y "
-    "trabajo duro. Enfrentaste adversidades sin doblarte: defendiste con coraje y "
-    "dignidad lo que con esfuerzo y justicia te correspondía, demostrando que a ti "
-    "nada te regaló la vida sin que lo lucharas hasta el final. Sin embargo, aun en "
-    "los momentos de mayor escasez, tu corazón nunca supo de egoísmo. Jamás le negaste "
-    "la mano a un amigo ni le dijiste \"no\" a quien te pidió ayuda.",
-    "La prosperidad llegó a tu vida como fruto de tu perseverancia. Con paciencia y "
-    "visión, transformaste el trabajo en logros: fundaste el barrio Mayta Cápac, "
-    "viste nacer tu anhelado Centro Recreacional que lleva ese mismo nombre, y "
-    "pudiste vivir una de tus grandes pasiones en el fútbol y los torneos "
-    "interbarrios. Tu esfuerzo dio frutos y compartiste ese éxito con los tuyos.",
-    "Como padre, tu presencia fue incondicional. Caminaste al lado de cada uno de "
-    "tus hijos en sus triunfos y los sostuviste en sus momentos difíciles. Seguiste "
-    "adelante, de pie, con la mirada puesta en tus hijos y con el abrazo listo para "
-    "recibir a tus primeros nietos y bisnietos.",
+    "Desde las tierras altas de Apurímac hasta el suelo de Chilca, tu camino estuvo trazado por la valentía y la determinación. Llegaste buscando a un hermano y encontraste un hogar, una vida y un destino. Fue aquí donde conociste a nuestra abuela Elena y, juntos, sembraron la semilla de una gran familia que floreció en 12 hijos, convirtiéndose en el pilar más firme de tu vida.",
+    "Como hombre, nos enseñaste el verdadero significado de la palabra lealtad y trabajo duro. Enfrentaste adversidades sin doblarte: defendiste con coraje y dignidad lo que con esfuerzo y justicia te correspondía, demostrando que a ti nada te regaló la vida sin que lo lucharas hasta el final. Sin embargo, aun en los momentos de mayor escasez, tu corazón nunca supo de egoísmo. Jamás le negaste la mano a un amigo ni le dijiste \"no\" a quien te pidió ayuda.",
+    "La prosperidad llegó a tu vida como fruto de tu perseverancia. Con paciencia y visión, transformaste el trabajo en logros: fundaste el barrio Mayta Cápac, viste nacer tu anhelado Centro Recreacional que lleva ese mismo nombre, y pudiste vivir una de tus grandes pasiones en el fútbol y los torneos interbarrios. Tu esfuerzo dio frutos y compartiste ese éxito con los tuyos.",
+    "Como padre, tu presencia fue incondicional. Caminaste al lado de cada uno de tus hijos en sus triunfos y los sostuviste en sus momentos difíciles. Seguiste adelante, de pie, con la mirada puesta en tus hijos y con el abrazo listo para recibir a tus primeros nietos y bisnietos."
 ]
- 
 for p in parrafos:
     st.markdown(f'<p class="texto-dedicatoria">{p}</p>', unsafe_allow_html=True)
  
-st.markdown(
-    '<p class="cita-destacada">Hoy honramos al hombre que abrió el camino, al esposo '
-    "compañero, al padre presente, al abuelo generoso y al bisabuelo sabio. Tu "
-    "historia de superación y tu legado viven en cada uno de nosotros.</p>",
-    unsafe_allow_html=True,
-)
- 
-st.markdown(
-    '<p class="cita-destacada" style="margin-top:24px;">Gracias por tu fuerza, por tu '
-    "generosidad sin límites y por enseñarnos a luchar siempre por lo nuestro.</p>",
-    unsafe_allow_html=True,
-)
+st.markdown('<p class="cita-destacada">Hoy honramos al hombre que abrió el camino, al esposo compañero, al padre presente, al abuelo generoso y al bisabuelo sabio. Tu historia de superación y tu legado viven en cada uno de nosotros.</p>', unsafe_allow_html=True)
+st.markdown('<p class="cita-destacada" style="margin-top:24px;">Gracias por tu fuerza, por tu generosidad sin límites y por enseñarnos a luchar siempre por lo nuestro.</p>', unsafe_allow_html=True)
 
 # --------------------------------------------------------------------------
 # DEDICA UNAS PALABRAS
@@ -507,30 +415,24 @@ with st.form("agregar_dedicatoria", clear_on_submit=True):
     enviar_dedicatoria = st.form_submit_button("Agregar mi dedicatoria")
     if enviar_dedicatoria and mensaje_dedicatoria.strip():
         texto_final = mensaje_dedicatoria.strip()
-        if nombre_dedicante.strip():
-            texto_final += f" — {nombre_dedicante.strip()}"
+        if nombre_dedicante.strip(): texto_final += f" — {nombre_dedicante.strip()}"
         st.session_state.mensajes_dedicatoria.append(texto_final)
         st.success("¡Gracias! Tu dedicatoria fue agregada.")
         lluvia_corazones()
 
 for mensaje in st.session_state.mensajes_dedicatoria:
-    st.markdown(
-        f'<p class="cita-destacada" style="margin-top:16px;">{mensaje}</p>',
-        unsafe_allow_html=True,
-    )
+    st.markdown(f'<p class="cita-destacada" style="margin-top:16px;">{mensaje}</p>', unsafe_allow_html=True)
 
 st.markdown('<p class="firma-familia">Con amor eterno, tu familia</p>', unsafe_allow_html=True)
- 
 st.markdown("<br>", unsafe_allow_html=True)
  
 # --------------------------------------------------------------------------
-# ABRAZO VIRTUAL 
+# ABRAZO VIRTUAL
 # --------------------------------------------------------------------------
 col1, col2, col3 = st.columns([1, 1, 1])
 with col2:
     if st.button("❤️ Enviar un Abrazo Virtual", use_container_width=True):
         lluvia_corazones()
- 
 st.markdown("---")
  
 # --------------------------------------------------------------------------
