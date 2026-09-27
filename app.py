@@ -2,7 +2,7 @@
 Dedicatoria a nuestro abuelo — versión Streamlit
 --------------------------------------------------
 Coloca este archivo, junto con:
-  - "Noches-Vacias.mp3"   (música de fondo, mismo directorio)
+  - "Noches-Vacias.mpeg"  (música de fondo, mismo directorio)
   - "abuelo.jpg"          (foto principal, opcional, mismo directorio)
 en la misma carpeta, y ejecútalo con:
  
@@ -23,7 +23,7 @@ st.set_page_config(
     layout="centered",
 )
  
-AUDIO_FILE = "Noches-Vacias.mp3"
+AUDIO_FILE = "Noches-Vacias.mpeg"
 PHOTO_FILE = "abuelo.jpg"  # coloca aquí la foto principal si la tienes
  
 # --------------------------------------------------------------------------
@@ -47,6 +47,69 @@ st.markdown(
         background-size: 30px 30px;
         background-position: 0 0, 15px 15px;
     }
+
+    /* -------- Barra superior fija (música / imprimir) -------- */
+    .barra-superior {
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        z-index: 999;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 24px;
+        background: rgba(250, 246, 240, 0.92);
+        backdrop-filter: blur(6px);
+        border-bottom: 1px solid rgba(212, 175, 55, 0.25);
+    }
+    .pastilla-boton {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #fff;
+        border: 1px solid rgba(212, 175, 55, 0.5);
+        border-radius: 999px;
+        padding: 8px 16px;
+        font-family: 'Cormorant Garamond', serif;
+        font-weight: 600;
+        font-size: .95rem;
+        color: #333;
+        cursor: pointer;
+        text-decoration: none;
+    }
+    .pastilla-boton.imprimir {
+        background: #c1770f;
+        color: #fff;
+        border: none;
+    }
+
+    /* Espacio para que la barra fija no tape el contenido */
+    .main .block-container {
+        position: relative;
+        padding-top: 90px;
+    }
+    /* Marcas de esquina doradas, estilo "marco de página" */
+    .main .block-container::before,
+    .main .block-container::after {
+        content: '';
+        position: absolute;
+        top: 8px;
+        width: 30px;
+        height: 30px;
+        border-top: 2px solid #b8860b;
+    }
+    .main .block-container::before {
+        left: 0;
+        border-left: 2px solid #b8860b;
+    }
+    .main .block-container::after {
+        right: 0;
+        border-right: 2px solid #b8860b;
+    }
+
+    @media print {
+        .barra-superior { display: none !important; }
+    }
+
     .titulo-dedicatoria {
         font-family: 'Cinzel', serif;
         text-align: center;
@@ -118,8 +181,14 @@ if os.path.exists(AUDIO_FILE):
     b64_audio = base64.b64encode(audio_bytes).decode()
     st.markdown(
         f"""
-        <audio autoplay loop>
-            <source src="data:audio/mp3;base64,{b64_audio}" type="audio/mpeg">
+        <audio
+            id="audio-fondo"
+            autoplay
+            loop
+            onplay="document.getElementById('music-label').innerText='🎵 Música de fondo: Reproduciendo'"
+            onpause="document.getElementById('music-label').innerText='🎵 Música de fondo: Pausada'"
+        >
+            <source src="data:audio/mpeg;base64,{b64_audio}" type="audio/mpeg">
         </audio>
         """,
         unsafe_allow_html=True,
@@ -129,6 +198,28 @@ else:
         f"No se encontró '{AUDIO_FILE}' en la carpeta del proyecto. "
         "Copia el archivo de música ahí para que suene automáticamente."
     )
+
+# --------------------------------------------------------------------------
+# BARRA SUPERIOR: toggle de música + botón de imprimir/guardar PDF
+# --------------------------------------------------------------------------
+st.markdown(
+    """
+    <div class="barra-superior">
+        <span
+            id="music-label"
+            class="pastilla-boton"
+            onclick="
+                var a = document.getElementById('audio-fondo');
+                if (a) { a.paused ? a.play() : a.pause(); }
+            "
+        >🎵 Música de fondo: Pausada</span>
+        <span class="pastilla-boton imprimir" onclick="window.print()">
+            🖨️ Guardar / Imprimir PDF
+        </span>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
  
 # --------------------------------------------------------------------------
 # ENCABEZADO / RETRATO
@@ -237,4 +328,3 @@ else:
  
 st.markdown("---")
 st.caption("Página de Homenaje Especial dedicada a nuestro querido abuelo ❤️")
- 
