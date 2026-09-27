@@ -431,13 +431,13 @@ def mostrar_fotos_de_fondo(fotos_guardadas):
         return
     fotos = fotos_guardadas[:14]
     piezas = ['<div class="fondo-recuerdos">']
-    for i, item in enumerate(fotos):
+    for item in fotos:
         url = item.get("url", "")
         if not url:
             continue
-        rnd = random.Random(i * 97 + 13)
-        top, left = rnd.randint(-5, 85), rnd.randint(-5, 85)
-        rot, ancho = rnd.randint(-18, 18), rnd.randint(150, 230)
+        # Sin semilla fija: cambia de tamaño, posición y rotación en cada recarga.
+        top, left = random.randint(-5, 85), random.randint(-5, 85)
+        rot, ancho = random.randint(-20, 20), random.randint(130, 260)
         piezas.append(
             f'<img src="{url}" '
             f'style="top:{top}%; left:{left}%; width:{ancho}px; '
