@@ -45,15 +45,7 @@ MIME_POR_EXTENSION = {
 
 
 def html(texto: str) -> str:
-    """Quita la indentación común de un bloque HTML/CSS multilínea.
-
-    Streamlit usa Markdown para renderizar st.markdown(unsafe_allow_html=True).
-    Si el texto tiene 4 o más espacios de indentación al inicio de cada línea,
-    Markdown lo interpreta como un BLOQUE DE CÓDIGO y lo muestra como texto
-    plano en vez de renderizarlo como HTML real (por eso, por ejemplo, la
-    etiqueta <audio> aparecía literalmente escrita en la página). Esta función
-    evita ese problema siempre que construyamos HTML con f-strings indentados.
-    """
+    """Quita la indentación común de un bloque HTML/CSS multilínea."""
     return textwrap.dedent(texto).strip()
 
  
@@ -72,26 +64,22 @@ st.markdown(
             --gold-accent: #d4af37;
         }
 
-        /* Ocultamos el header/menú/footer nativos de Streamlit: los reemplazamos
-           por nuestra propia barra superior. Usamos visibility: hidden en el header
-           para evitar el bug de Streamlit que bloquea el scroll al usar display: none. */
+        /* --- ARREGLO DEFINITIVO PARA EL SCROLL --- */
+        /* En lugar de borrar el header (lo cual rompe el layout de Streamlit),
+           lo hacemos completamente transparente y le quitamos la interacción. */
         header[data-testid="stHeader"] {
-            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
             height: 0px !important;
-            min-height: 0px !important;
-            padding: 0px !important;
         }
-        #MainMenu,
-        footer {
+        #MainMenu, footer {
             display: none !important;
         }
         
-        /* Aseguramos que la página principal pueda desplazarse (solución al bug de scroll) */
-        [data-testid="stAppViewContainer"], 
-        .stApp, 
-        .main {
+        /* Aseguramos explícitamente que los contenedores permitan arrastrar/hacer scroll */
+        html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
             overflow-y: auto !important;
-            overflow-x: hidden !important;
+            overscroll-behavior-y: auto !important;
         }
 
         .stApp {
@@ -171,7 +159,7 @@ st.markdown(
         .fondo-recuerdos {
             position: fixed;
             inset: 0;
-            z-index: 0;
+            z-index: -1; /* Enviado completamente al fondo para no bloquear toques */
             overflow: hidden;
             pointer-events: none;
         }
@@ -279,42 +267,15 @@ st.markdown(
             margin-top: 6px;
         }
 
-        /* -------- Forzamos color oscuro en los elementos NATIVOS de Streamlit
-           (subtítulos, captions, labels, uploader, alertas). Si el tema del
-           navegador/Streamlit es oscuro, estos elementos salen en texto claro
-           por defecto y se pierden sobre nuestro fondo crema. No tocamos
-           nuestras propias clases (texto-dedicatoria, cita-destacada, etc.)
-           porque esas ya fijan su color explícitamente más abajo. -------- */
+        /* Colores nativos de Streamlit */
         .main h1, .main h2, .main h3, .main h4, .main h5, .main h6,
-        [data-testid="stHeading"] * {
-            color: #111d33 !important;
-        }
-        [data-testid="stCaptionContainer"],
-        [data-testid="stCaptionContainer"] *,
-        .main .stCaption {
-            color: #6b6b6b !important;
-        }
-        [data-testid="stWidgetLabel"] p,
-        [data-testid="stWidgetLabel"] label,
-        .main label {
-            color: #2b231d !important;
-        }
-        [data-testid="stFileUploaderDropzoneInstructions"],
-        [data-testid="stFileUploaderDropzoneInstructions"] * {
-            color: #2b231d !important;
-        }
-        [data-testid="stFileUploaderDropzone"] small,
-        [data-testid="stFileUploaderDropzone"] span {
-            color: #6b6b6b !important;
-        }
-        [data-testid="stAlert"],
-        [data-testid="stAlert"] * {
-            color: #2b231d !important;
-        }
-        .stTextArea textarea, .stTextInput input {
-            color: #2b231d !important;
-            background-color: #fffdf8 !important;
-        }
+        [data-testid="stHeading"] * { color: #111d33 !important; }
+        [data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] *, .main .stCaption { color: #6b6b6b !important; }
+        [data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] label, .main label { color: #2b231d !important; }
+        [data-testid="stFileUploaderDropzoneInstructions"], [data-testid="stFileUploaderDropzoneInstructions"] * { color: #2b231d !important; }
+        [data-testid="stFileUploaderDropzone"] small, [data-testid="stFileUploaderDropzone"] span { color: #6b6b6b !important; }
+        [data-testid="stAlert"], [data-testid="stAlert"] * { color: #2b231d !important; }
+        .stTextArea textarea, .stTextInput input { color: #2b231d !important; background-color: #fffdf8 !important; }
         </style>
         """
     ),
@@ -326,12 +287,10 @@ def mostrar_fotos_de_fondo():
     """Dibuja las fotos de la galería como recuerdos translúcidos de fondo."""
     if not st.session_state.galeria:
         return
-    # Se limita para no saturar la pantalla si hay muchísimas fotos
     fotos = st.session_state.galeria[:14]
     piezas = ['<div class="fondo-recuerdos">']
     for i, (foto_bytes, _nota, mime) in enumerate(fotos):
         b64 = base64.b64encode(foto_bytes).decode()
-        # posiciones/rotación pseudo-aleatorias pero estables (semilla fija por foto)
         rnd = random.Random(i * 97 + 13)
         top = rnd.randint(-5, 85)
         left = rnd.randint(-5, 85)
@@ -368,19 +327,12 @@ def lluvia_corazones(cantidad: int = 18):
     )
 
 
-# Fondo de recuerdos (se pinta ya, para que quede detrás de todo el contenido)
+# Fondo de recuerdos 
 mostrar_fotos_de_fondo()
  
 # --------------------------------------------------------------------------
-# MÚSICA DE FONDO + BARRA SUPERIOR (música / imprimir)
+# MÚSICA DE FONDO + BARRA SUPERIOR 
 # --------------------------------------------------------------------------
-# IMPORTANTE: st.markdown(unsafe_allow_html=True) renderiza el HTML, pero por
-# seguridad Streamlit IGNORA cualquier JavaScript dentro de ese HTML (scripts
-# y atributos onclick/onplay/onpause no se ejecutan nunca). Por eso los
-# botones no reaccionaban al hacer clic. La única forma de tener JavaScript
-# que realmente funcione en Streamlit es con st.components.v1.html(), que
-# crea un <iframe> real donde sí se ejecutan los scripts. Por eso movemos el
-# audio y los botones ahí adentro.
 if os.path.exists(AUDIO_FILE):
     with open(AUDIO_FILE, "rb") as f:
         audio_bytes = f.read()
@@ -417,8 +369,6 @@ barra_superior_html = html(
         {audio_tag}
     </div>
     <script>
-        // Intentamos fijar esta barra en la parte superior de la ventana real
-        // (no solo del iframe), tomando el propio iframe como referencia.
         try {{
             var marco = window.frameElement;
             if (marco) {{
@@ -427,10 +377,14 @@ barra_superior_html = html(
                 marco.style.left = "0";
                 marco.style.right = "0";
                 marco.style.width = "100%";
+                /* CRÍTICO: Limitamos explícitamente la altura del iframe para evitar 
+                   que cubra la pantalla y bloquee los eventos táctiles/arrastre en móviles */
+                marco.style.height = "65px"; 
+                marco.style.maxHeight = "65px";
                 marco.style.zIndex = "999999";
                 marco.style.border = "none";
             }}
-        }} catch (e) {{ /* si el navegador bloquea el acceso, seguimos igual */ }}
+        }} catch (e) {{ }}
 
         var audio = document.getElementById("audio-fondo");
         var btnMusica = document.getElementById("btn-musica");
@@ -451,24 +405,19 @@ barra_superior_html = html(
 
         if (btnImprimir) {{
             btnImprimir.addEventListener("click", function () {{
-                // Imprimimos la ventana principal (no el iframe) porque ahí
-                // está todo el contenido de la dedicatoria.
                 try {{ window.parent.print(); }} catch (e) {{ window.print(); }}
             }});
         }}
     </script>
     """
 )
-components.html(barra_superior_html, height=56)
+components.html(barra_superior_html, height=65)
 
-# Como la barra ahora vive en un iframe fijo, dejamos un espacio equivalente
-# arriba del contenido para que no quede tapado.
+# Espacio equivalente
 st.markdown(html("<div style='height:16px;'></div>"), unsafe_allow_html=True)
  
 # --------------------------------------------------------------------------
 # ENCABEZADO / RETRATO
-# (la foto se embebe como <img> dentro del MISMO bloque que el marco dorado,
-#  para que el borde realmente la envuelva)
 # --------------------------------------------------------------------------
 if os.path.exists(PHOTO_FILE):
     with open(PHOTO_FILE, "rb") as f:
@@ -546,8 +495,7 @@ st.markdown(
 )
 
 # --------------------------------------------------------------------------
-# DEDICA UNAS PALABRAS: cada quien de la familia puede dejar su propio
-# mensaje, que aparece como una cita destacada más, junto a las de arriba.
+# DEDICA UNAS PALABRAS
 # --------------------------------------------------------------------------
 st.markdown("<br>", unsafe_allow_html=True)
 st.subheader("💛 Dedica unas palabras")
@@ -576,7 +524,7 @@ st.markdown('<p class="firma-familia">Con amor eterno, tu familia</p>', unsafe_a
 st.markdown("<br>", unsafe_allow_html=True)
  
 # --------------------------------------------------------------------------
-# ABRAZO VIRTUAL (ahora con corazones en vez de globos)
+# ABRAZO VIRTUAL 
 # --------------------------------------------------------------------------
 col1, col2, col3 = st.columns([1, 1, 1])
 with col2:
@@ -587,7 +535,6 @@ st.markdown("---")
  
 # --------------------------------------------------------------------------
 # GALERÍA DE RECUERDOS FAMILIARES
-# (las fotos se muestran como fondo translúcido; aquí solo se listan las notas)
 # --------------------------------------------------------------------------
 st.subheader("📷 Galería de Recuerdos Familiares")
 st.caption("Las fotos que agregues aparecerán tenues, de fondo, como recuerdos flotando por toda la página.")
