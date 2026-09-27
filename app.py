@@ -223,7 +223,7 @@ st.markdown(
 
         .main .block-container {
             padding-top: 0rem !important;
-            margin-top: -1.5rem !important;
+            margin-top: -3.5rem !important;
             position: relative;
             z-index: 1;
         }
@@ -232,6 +232,9 @@ st.markdown(
         }
         div[data-testid="stAppViewContainer"] {
             padding-top: 0rem !important;
+        }
+        div[data-testid="stIFrame"] {
+            margin-top: -12px !important;
         }
 
         .main .block-container::before,
