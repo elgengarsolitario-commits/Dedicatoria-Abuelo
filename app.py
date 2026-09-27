@@ -159,6 +159,31 @@ def eliminar_foto(id_: int, path: str):
         st.error(f"Error al eliminar la foto: {e}")
 
 
+# --------------------------------------------------------------------------
+# MANEJO DE CLICS DE ELIMINAR (llegan como ?del_ded=ID o ?del_foto=ID)
+# --------------------------------------------------------------------------
+_params = st.query_params
+if "del_ded" in _params:
+    try:
+        eliminar_dedicatoria(int(_params["del_ded"]))
+    except Exception:
+        pass
+    st.query_params.clear()
+    st.rerun()
+
+if "del_foto" in _params:
+    try:
+        _id_foto = int(_params["del_foto"])
+        _fotos_tmp = cargar_fotos()
+        _match = next((f for f in _fotos_tmp if f["id"] == _id_foto), None)
+        if _match:
+            eliminar_foto(_id_foto, _match["path"])
+    except Exception:
+        pass
+    st.query_params.clear()
+    st.rerun()
+
+
 def html(texto: str) -> str:
     return textwrap.dedent(texto).strip()
 
@@ -330,6 +355,53 @@ st.markdown(
             text-transform: uppercase;
             color: #6b6b6b !important;
             margin-top: 6px;
+        }
+
+        .tarjeta-con-borrar {
+            position: relative;
+        }
+        .btn-eliminar {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #111d33;
+            color: #fff !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            text-decoration: none !important;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.35);
+            z-index: 5;
+            line-height: 1;
+        }
+        .btn-eliminar:hover { background: #c1770f; }
+
+        .galeria-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 18px;
+            margin-top: 12px;
+        }
+        .recuerdo-card img {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 4px solid #fff;
+            box-shadow: 0 6px 14px rgba(17,29,51,0.2);
+            display: block;
+        }
+        .recuerdo-nota {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 0.95rem;
+            color: #6b6b6b !important;
+            text-align: center;
+            margin: 6px 0 0 0;
         }
 
         .main h1, .main h2, .main h3, .main h4, .main h5, .main h6,
@@ -576,13 +648,15 @@ for row in mensajes_guardados:
     texto_mostrado = row.get("mensaje") or ""
     if row.get("nombre"):
         texto_mostrado += f" — {row['nombre']}"
-    col_msg, col_del = st.columns([9, 1])
-    with col_msg:
-        st.markdown(f'<p class="cita-destacada" style="margin-top:16px;">{texto_mostrado}</p>', unsafe_allow_html=True)
-    with col_del:
-        if st.button("🗑️", key=f"del_ded_{row['id']}", help="Quitar esta dedicatoria"):
-            eliminar_dedicatoria(row["id"])
-            st.rerun()
+    st.markdown(
+        f'''
+        <div class="tarjeta-con-borrar" style="margin-top:16px;">
+            <p class="cita-destacada" style="margin:0;">{texto_mostrado}</p>
+            <a class="btn-eliminar" href="?del_ded={row['id']}" title="Quitar esta dedicatoria">✕</a>
+        </div>
+        ''',
+        unsafe_allow_html=True,
+    )
 
 st.markdown('<p class="firma-familia">Con amor eterno, tu familia</p>', unsafe_allow_html=True)
 st.markdown("<br>", unsafe_allow_html=True)
@@ -613,16 +687,21 @@ with st.form("agregar_foto", clear_on_submit=True):
         st.rerun()
 
 if fotos_guardadas:
+    piezas_galeria = ['<div class="galeria-grid">']
     for item in fotos_guardadas:
-        col_foto, col_nota, col_quitar = st.columns([1, 6, 1])
-        with col_foto:
-            st.image(item["url"], width=60)
-        with col_nota:
-            st.markdown(f'<p class="lista-recuerdos" style="text-align:left;">🕊️ {item["nota"]}</p>', unsafe_allow_html=True)
-        with col_quitar:
-            if st.button("🗑️", key=f"del_foto_{item['id']}", help="Quitar esta foto de la galería"):
-                eliminar_foto(item["id"], item["path"])
-                st.rerun()
+        piezas_galeria.append(
+            f'''
+            <div class="recuerdo-card">
+                <div class="tarjeta-con-borrar">
+                    <img src="{item['url']}">
+                    <a class="btn-eliminar" href="?del_foto={item['id']}" title="Quitar esta foto">✕</a>
+                </div>
+                <p class="recuerdo-nota">{item['nota']}</p>
+            </div>
+            '''
+        )
+    piezas_galeria.append("</div>")
+    st.markdown("".join(piezas_galeria), unsafe_allow_html=True)
 else:
     st.info("Aún no hay recuerdos agregados a la galería.")
 
