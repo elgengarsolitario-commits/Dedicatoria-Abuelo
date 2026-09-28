@@ -20,6 +20,7 @@ import os
 import random
 import textwrap
 import uuid
+from html import escape as esc
 
 import streamlit as st
 import streamlit.components.v1 as components
@@ -651,16 +652,14 @@ st.markdown('<p class="cita-destacada" style="margin-top:24px;">Gracias por tu f
 # Mensajes de la familia guardados en Supabase (junto a las citas fijas, antes del formulario)
 mensajes_guardados = cargar_dedicatorias()
 for row in mensajes_guardados:
-    texto_mostrado = row.get("mensaje") or ""
+    texto_mostrado = esc(row.get("mensaje") or "").replace("\n", "<br>")
     if row.get("nombre"):
-        texto_mostrado += f" — {row['nombre']}"
+        texto_mostrado += f" — {esc(row['nombre'])}"
     st.markdown(
-        f'''
-        <div class="tarjeta-con-borrar" style="margin-top:16px;">
-            <p class="cita-destacada" style="margin:0;">{texto_mostrado}</p>
-            <a class="btn-eliminar" href="?del_ded={row['id']}" title="Quitar esta dedicatoria">✕</a>
-        </div>
-        ''',
+        '<div class="tarjeta-con-borrar" style="margin-top:16px;">'
+        f'<p class="cita-destacada" style="margin:0;">{texto_mostrado}</p>'
+        f'<a class="btn-eliminar" href="?del_ded={row["id"]}" title="Quitar esta dedicatoria">✕</a>'
+        '</div>',
         unsafe_allow_html=True,
     )
 
@@ -668,15 +667,13 @@ if fotos_guardadas:
     piezas_galeria = ['<div class="galeria-grid" style="margin-top:20px;">']
     for item in fotos_guardadas:
         piezas_galeria.append(
-            f'''
-            <div class="recuerdo-card">
-                <div class="tarjeta-con-borrar">
-                    <img src="{item['url']}">
-                    <a class="btn-eliminar" href="?del_foto={item['id']}" title="Quitar esta foto">✕</a>
-                </div>
-                <p class="recuerdo-nota">{item['nota']}</p>
-            </div>
-            '''
+            '<div class="recuerdo-card">'
+            '<div class="tarjeta-con-borrar">'
+            f'<img src="{item["url"]}">'
+            f'<a class="btn-eliminar" href="?del_foto={item["id"]}" title="Quitar esta foto">✕</a>'
+            '</div>'
+            f'<p class="recuerdo-nota">{esc(item.get("nota") or "")}</p>'
+            '</div>'
         )
     piezas_galeria.append("</div>")
     st.markdown("".join(piezas_galeria), unsafe_allow_html=True)
